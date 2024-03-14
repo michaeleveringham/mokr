@@ -1,0 +1,12 @@
+{
+    "description": "mokr-proxy-auth",
+    "manifest_version": 2,
+    "name": "mokr-proxy-auth",
+    "version": "1.0",
+  
+    "permissions": ["webRequest", "webRequestBlocking", "<all_urls>"],
+
+    "background": {
+      "scripts": ["background.js"]
+    }
+  }
