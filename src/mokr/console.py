@@ -33,11 +33,12 @@ async def scrape(
         SystemExit: Raised if any error encountered to set exit code to 1.
     """
     try:
-        browser = await launch(
+        launcher = launch(
             browser_type=browser_type,
             headless=headless,
             proxy=proxy,
         )
+        browser = await launcher.launch()
         page = await browser.first_page()
         if user_agent:
             await page.set_user_agent(user_agent)
