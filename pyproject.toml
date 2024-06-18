@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mokr"
-version = "0.1.1"
+version = "0.1.2"
 description = "Remote web browser automation."
 authors = ["Michael Everingham <36551116+michaeleveringham@users.noreply.github.com>"]
 readme = "README.md"
