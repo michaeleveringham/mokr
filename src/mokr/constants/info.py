@@ -3,7 +3,7 @@ import sys
 from pathlib import Path
 
 
-MOKR_VERSION = "0.1.1"
+MOKR_VERSION = "0.1.2"
 DEFAULT_CHROME_VERSION = "122.0.6261.128"
 DEFAULT_FIREFOX_BUILD = "123.0a1"
 CHROME_VERSION = os.environ.get(
