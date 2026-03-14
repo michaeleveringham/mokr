@@ -13,6 +13,7 @@ build:
       # Install dependencies with 'docs' dependency group
       # https://docs.astral.sh/uv/guides/projects/
       - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH uv sync --group docs
+      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH uv pip install -e .
 
 sphinx:
   configuration: docs/conf.py
