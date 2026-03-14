@@ -76,23 +76,23 @@ class NavigationWaiter:
 
     def _validate_wait_until(self, wait_until: list[LIFECYCLE_EVENTS]) -> None:
         arg_name_to_lifecycle_event = {
-            'load': 'load',
-            'domcontentloaded': 'DOMContentLoaded',
-            'documentloaded': 'DOMContentLoaded',
-            'networkidle': 'networkIdle',
-            'networkalmostidle': 'networkAlmostIdle',
+            "load": "load",
+            "domcontentloaded": "DOMContentLoaded",
+            "documentloaded": "DOMContentLoaded",
+            "networkidle": "networkIdle",
+            "networkalmostidle": "networkAlmostIdle",
         }
         self._expected_lifecycle = []
         for name in wait_until:
             protocol_event = arg_name_to_lifecycle_event.get(name)
             if not protocol_event:
                 raise ValueError(
-                    f'Unknown value(s) given for wait_until: {name}'
+                    f"Unknown value(s) given for wait_until: {name}"
                 )
             self._expected_lifecycle.append(protocol_event)
 
     async def _timeout_func(self) -> None:
-        error_message = f'Navigation timeout of {self._timeout}ms exceeded.'
+        error_message = f"Navigation timeout of {self._timeout}ms exceeded."
         await asyncio.sleep(self._timeout / 1000)
         self._maximum_timer.set_exception(MokrTimeoutError(error_message))
 

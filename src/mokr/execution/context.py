@@ -21,15 +21,15 @@ if TYPE_CHECKING:
 
 LOGGER = logging.getLogger(__name__)
 
-EVALUATION_SCRIPT_URL = '__mokr_evaluation_script__'
+EVALUATION_SCRIPT_URL = "__mokr_evaluation_script__"
 
 SOURCE_URL_REGEX = re.compile(
-    r'^[\040\t]*//[@#] sourceURL=\s*(\S*?)\s*$',
+    r"^[\040\t]*//[@#] sourceURL=\s*(\S*?)\s*$",
     re.MULTILINE,
 )
 
 
-class ExecutionContext():
+class ExecutionContext:
     def __init__(
         self,
         client: DevtoolsConnection,
@@ -51,9 +51,9 @@ class ExecutionContext():
         """
         self._client = client
         self._frame = frame
-        self._context_id = context_payload.get('id')
-        aux_data = context_payload.get('auxData', {'isDefault': False})
-        self._is_default = bool(aux_data.get('isDefault'))
+        self._context_id = context_payload.get("id")
+        aux_data = context_payload.get("auxData", {"isDefault": False})
+        self._is_default = bool(aux_data.get("isDefault"))
         self._object_handle_factory = object_handle_factory
 
     @property
@@ -63,35 +63,35 @@ class ExecutionContext():
 
     @staticmethod
     def _rewrite_exception(exception: Exception) -> None:
-        if exception.args[0].endswith('Cannot find context with specified id'):
-            msg = 'Execution context destroyed, likely due to a navigation.'
+        if exception.args[0].endswith("Cannot find context with specified id"):
+            msg = "Execution context destroyed, likely due to a navigation."
             raise type(exception)(msg)
         raise exception
 
     def _convert_argument(self, arg: Any) -> dict:
         if arg == math.inf:
-            return {'unserializableValue': 'Infinity'}
+            return {"unserializableValue": "Infinity"}
         if arg == -math.inf:
-            return {'unserializableValue': '-Infinity'}
+            return {"unserializableValue": "-Infinity"}
         object_handle = arg if isinstance(arg, JavascriptHandle) else None
         if object_handle:
             if object_handle._context != self:
                 raise ElementHandleError(
-                    'JavascriptHandle can only be evaluated'
-                    ' in the context it was created in.'
+                    "JavascriptHandle can only be evaluated"
+                    " in the context it was created in."
                 )
             if object_handle._disposed:
-                raise ElementHandleError('JavascriptHandle is disposed!')
-            if object_handle._remote_object.get('unserializableValue'):
+                raise ElementHandleError("JavascriptHandle is disposed!")
+            if object_handle._remote_object.get("unserializableValue"):
                 return {
-                    'unserializableValue': object_handle._remote_object.get(
-                        'unserializableValue'
+                    "unserializableValue": object_handle._remote_object.get(
+                        "unserializableValue"
                     )
                 }
-            if not object_handle._remote_object.get('objectId'):
-                return {'value': object_handle._remote_object.get('value')}
-            return {'objectId': object_handle._remote_object.get('objectId')}
-        return {'value': arg}
+            if not object_handle._remote_object.get("objectId"):
+                return {"value": object_handle._remote_object.get("value")}
+            return {"objectId": object_handle._remote_object.get("objectId")}
+        return {"value": arg}
 
     async def evaluate(
         self,
@@ -128,9 +128,10 @@ class ExecutionContext():
             result = await handle.json()
         except NetworkError as e:
             if any(
-                error_part in e.args[0] for error_part in [
-                    'Object reference chain is too long',
-                    'Object couldn\'t be returned by value',
+                error_part in e.args[0]
+                for error_part in [
+                    "Object reference chain is too long",
+                    "Object couldn't be returned by value",
                 ]
             ):
                 return None
@@ -157,7 +158,7 @@ class ExecutionContext():
         Returns:
             JavascriptHandle: `mokr.execution.JavascriptHandle`.
         """
-        suffix = f'//# sourceURL={EVALUATION_SCRIPT_URL}'
+        suffix = f"//# sourceURL={EVALUATION_SCRIPT_URL}"
         if eval_script_url_suffix:
             suffix += eval_script_url_suffix
         try:
@@ -167,38 +168,38 @@ class ExecutionContext():
                 if SOURCE_URL_REGEX.match(page_function):
                     expression_with_source_url = page_function
                 else:
-                    expression_with_source_url = f'{page_function}\n{suffix}'
+                    expression_with_source_url = f"{page_function}\n{suffix}"
                 _obj = await self._client.send(
                     RUNTIME_EVALUATE,
                     {
-                        'expression': expression_with_source_url,
-                        'context_id': self._context_id,
-                        'returnByValue': False,
-                        'awaitPromise': True,
-                        'userGesture': True,
+                        "expression": expression_with_source_url,
+                        "context_id": self._context_id,
+                        "returnByValue": False,
+                        "awaitPromise": True,
+                        "userGesture": True,
                     },
                 )
             else:
                 _obj = await self._client.send(
                     RUNTIME_CALL_FUNCTION,
                     {
-                        'functionDeclaration': f'{page_function}\n{suffix}\n',
-                        'executionContextId': self._context_id,
-                        'arguments': [
+                        "functionDeclaration": f"{page_function}\n{suffix}\n",
+                        "executionContextId": self._context_id,
+                        "arguments": [
                             self._convert_argument(arg) for arg in args
                         ],
-                        'returnByValue': False,
-                        'awaitPromise': True,
-                        'userGesture': True,
+                        "returnByValue": False,
+                        "awaitPromise": True,
+                        "userGesture": True,
                     },
                 )
         except Exception as e:
             self._rewrite_exception(e)
-        exception_details = _obj.get('exceptionDetails')
+        exception_details = _obj.get("exceptionDetails")
         if exception_details:
             js_exception = format_javascript_exception(exception_details)
-            raise ElementHandleError(f'Evaluation failed: {js_exception}')
-        remote_object = _obj.get('result')
+            raise ElementHandleError(f"Evaluation failed: {js_exception}")
+        remote_object = _obj.get("result")
         return self._object_handle_factory(remote_object)
 
     async def query_objects(
@@ -222,13 +223,13 @@ class ExecutionContext():
                 from the remot response.
         """
         if javascript_handle._disposed:
-            raise ElementHandleError('Prototype JavascriptHandle is disposed.')
-        if not javascript_handle._remote_object.get('objectId'):
+            raise ElementHandleError("Prototype JavascriptHandle is disposed.")
+        if not javascript_handle._remote_object.get("objectId"):
             raise ElementHandleError(
-                'Prototype JavascriptHandle cannot reference primitive value.'
+                "Prototype JavascriptHandle cannot reference primitive value."
             )
         response = await self._client.send(
             RUNTIME_QUERY_OBJECTS,
-            {'prototypeObjectId': javascript_handle._remote_object['objectId']}
+            {"prototypeObjectId": javascript_handle._remote_object["objectId"]},
         )
-        return self._object_handle_factory(response.get('objects'))
+        return self._object_handle_factory(response.get("objects"))

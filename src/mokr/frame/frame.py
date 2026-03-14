@@ -20,11 +20,10 @@ from mokr.execution.context import ExecutionContext, JavascriptHandle
 from mokr.execution.handle.element import ElementHandle
 from mokr.frame.wait import WaitTask
 
-
 LOGGER = logging.getLogger(__name__)
 
 
-class Frame():
+class Frame:
     def __init__(
         self,
         client: DevtoolsConnection,
@@ -43,7 +42,7 @@ class Frame():
         """
         self._client = client
         self._parent_frame = parent_frame
-        self._url = ''
+        self._url = ""
         self._detached = False
         self._id = frame_id
         self._document_promise: ElementHandle | None = None
@@ -51,7 +50,7 @@ class Frame():
         self._navigation_url = None
         self._set_default_context(None)
         self._wait_tasks: Set[WaitTask] = set()
-        self._loader_id = ''
+        self._loader_id = ""
         self._lifecycle_events: Set[str] = set()
         self._child_frames: Set[Frame] = set()
         if self._parent_frame:
@@ -60,7 +59,7 @@ class Frame():
     @property
     def name(self) -> str:
         """Get the name of the remote frame."""
-        return self.__dict__.get('_name', '')
+        return self.__dict__.get("_name", "")
 
     @property
     def url(self) -> str:
@@ -114,7 +113,7 @@ class Frame():
         hidden: bool = False,
         timeout: int = 30000,
     ) -> WaitTask:
-        polling = 'raf' if hidden or visible else 'mutation'
+        polling = "raf" if hidden or visible else "mutation"
         title = (
             f'{"XPath" if is_xpath else "selector"} "{selector_or_xpath}"'
             f'{" to be hidden" if hidden else ""}'
@@ -133,28 +132,29 @@ class Frame():
         )
 
     def _navigated(self, frame_payload: dict) -> None:
-        self._name = frame_payload.get('name', '')
-        self._navigation_url = frame_payload.get('url', '')
-        self._url = frame_payload.get('url', '')
+        self._name = frame_payload.get("name", "")
+        self._navigation_url = frame_payload.get("url", "")
+        self._url = frame_payload.get("url", "")
 
     def _navigated_within_document(self, url: str) -> None:
         self._url = url
 
     def _on_lifecycle_event(self, loader_id: str, name: str) -> None:
-        if name == 'init':
+        if name == "init":
             self._loader_id = loader_id
             self._lifecycle_events.clear()
         else:
             self._lifecycle_events.add(name)
 
     def _on_loading_stopped(self) -> None:
-        self._lifecycle_events.add('DOMContentLoaded')
-        self._lifecycle_events.add('load')
+        self._lifecycle_events.add("DOMContentLoaded")
+        self._lifecycle_events.add("load")
 
     def _detach(self) -> None:
         for wait_task in self._wait_tasks:
             wait_task.terminate(
-                PageError('Method wait_for_* failed: Frame detached.'))
+                PageError("Method wait_for_* failed: Frame detached.")
+            )
         self._detached = True
         if self._parent_frame:
             self._parent_frame._child_frames.remove(self)
@@ -163,23 +163,23 @@ class Frame():
     async def _ensure_execution_context(self) -> ExecutionContext:
         context = await self.execution_context()
         if context is None:
-            raise PageError('Frame has no context.')
+            raise PageError("Frame has no context.")
         return context
 
     async def _ensure_handle(self, selector: str) -> ElementHandle:
         handle = await self.query_selector(selector)
         if not handle:
-            raise PageError(f'No node found for selector: {selector}')
+            raise PageError(f"No node found for selector: {selector}")
         return handle
 
     async def _document(self) -> ElementHandle:
         if self._document_promise:
             return self._document_promise
         context = await self._ensure_execution_context()
-        document = (await context.evaluate_handle('document'))._as_element()
+        document = (await context.evaluate_handle("document"))._as_element()
         self._document_promise = document
         if document is None:
-            raise PageError('Could not find document.')
+            raise PageError("Could not find document.")
         return document
 
     async def execution_context(self) -> ExecutionContext | None:
@@ -348,8 +348,8 @@ class Frame():
         elif file_path:
             with open(file_path) as f:
                 contents = f.read()
-            contents = contents + '//# sourceURL={}'.format(
-                file_path.replace('\n', '')
+            contents = contents + "//# sourceURL={}".format(
+                file_path.replace("\n", "")
             )
             args = [METHOD_EMBED_JAVASCRIPT_BY_CONTENT, contents]
         elif url:
@@ -359,7 +359,7 @@ class Frame():
         try:
             return (await context.evaluate_handle(*args))._as_element()
         except ElementHandleError:
-            raise PageError('Failed to embed script, likely a network error.')
+            raise PageError("Failed to embed script, likely a network error.")
 
     async def embed_style(
         self,
@@ -397,8 +397,8 @@ class Frame():
         elif file_path:
             with open(file_path) as f:
                 contents = f.read()
-            contents = contents + '/*# sourceURL={}*/'.format(
-                file_path.replace('\n', '')
+            contents = contents + "/*# sourceURL={}*/".format(
+                file_path.replace("\n", "")
             )
             args = [METHOD_EMBED_STYLE_BY_CONTENT, contents]
         elif url:
@@ -406,7 +406,7 @@ class Frame():
         try:
             return (await context.evaluate_handle(*args))._as_element()
         except ElementHandleError:
-            raise PageError('Failed to embed style, likely a network error.')
+            raise PageError("Failed to embed style, likely a network error.")
 
     async def click(
         self,
@@ -617,7 +617,7 @@ class Frame():
     def wait_for_function(
         self,
         page_function: str,
-        polling: Literal['raf', 'mutation'] | int | float,
+        polling: Literal["raf", "mutation"] | int | float,
         timeout: int = 30000,
     ) -> Awaitable[JavascriptHandle]:
         """
@@ -640,7 +640,7 @@ class Frame():
         return WaitTask(
             self,
             page_function,
-            'function',
+            "function",
             polling,
             timeout,
             self._client._loop,
@@ -653,4 +653,4 @@ class Frame():
         Returns:
             str: Document title.
         """
-        return await self.evaluate('() => document.title')
+        return await self.evaluate("() => document.title")

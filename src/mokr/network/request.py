@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-class Request():
+class Request:
     def __init__(
         self,
         page: Page,
@@ -92,9 +92,9 @@ class Request():
         self._failure_text: str | None = None
         self._url = url
         self._resource_type = resource_type.lower()
-        self._method = payload.get('method')
-        self._post_data = payload.get('postData')
-        headers = payload.get('headers', {})
+        self._method = payload.get("method")
+        self._post_data = payload.get("postData")
+        headers = payload.get("headers", {})
         self._headers = {k.lower(): v for k, v in headers.items()}
         self._frame = frame
         self._redirect_chain = redirect_chain
@@ -155,7 +155,7 @@ class Request():
         return self._frame
 
     @property
-    def redirect_chain(self) -> list['Request']:
+    def redirect_chain(self) -> list["Request"]:
         """
         Return the chain of `Request` objects if the first remote request
         was a redirect.
@@ -176,9 +176,9 @@ class Request():
 
     def _verify_request_allowed(self) -> None:
         if not self._allow_interception:
-            raise NetworkError('Request interception is not enabled.')
+            raise NetworkError("Request interception is not enabled.")
         if self._interception_handled:
-            raise NetworkError('Request is already handled.')
+            raise NetworkError("Request is already handled.")
         if self._httpx_request:
             raise ValueError(
                 "Cannot run interception methods on HttpDomain-based requests."
@@ -259,7 +259,7 @@ class Request():
             headers (dict, optional): Headers, will completely replace existing
                 headers. Defaults to None (use `Request.headers`).
         """
-        if self._url.startswith('data:'):
+        if self._url.startswith("data:"):
             return
         self._verify_request_allowed()
         self._interception_handled = True
@@ -267,9 +267,10 @@ class Request():
         # is usually the interception ID in these edge-cases.
         if not self._interception_id:
             self._interception_id = self._request_id
-        params = {'requestId': self._interception_id}
+        params = {"requestId": self._interception_id}
         overrides = {
-            k: v for k, v in {
+            k: v
+            for k, v in {
                 "url": url,
                 "method": method,
                 "postData": post_data,
@@ -280,8 +281,14 @@ class Request():
         params.update(overrides)
         try:
             await self._client.send(FETCH_CONTINUE, params)
-        except Exception:
-            LOGGER.error("Error continuing network request.", exc_info=True)
+        except Exception as e:
+            error_msg = str(e)
+            # "Target closed" errors are expected when the page/browser closes
+            # before all network requests can be finalized, so only log at debug level
+            if "Target closed" in error_msg:
+                LOGGER.debug("Target closed before request could be released.")
+            else:
+                LOGGER.error("Error continuing network request.", exc_info=True)
 
     async def fulfill(
         self,
@@ -308,7 +315,7 @@ class Request():
             body (str | bytes | None, optional): Response body.
                 Defaults to None (empty body).
         """
-        if self._url.startswith('data:'):
+        if self._url.startswith("data:"):
             return
         self._verify_request_allowed()
         if response:
@@ -324,29 +331,32 @@ class Request():
         self._interception_handled = True
         fields = ["responseCode", "responsePhrase", "responseHeaders", "body"]
         overrides = {
-            k: v for k, v in overrides.items()
-            if v is not None and k in fields
+            k: v for k, v in overrides.items() if v is not None and k in fields
         }
         headers_dict = {}
-        if overrides.get('responseHeaders'):
-            for name, value in overrides['responseHeaders'].items():
+        if overrides.get("responseHeaders"):
+            for name, value in overrides["responseHeaders"].items():
                 headers_dict[name.lower()] = value
-        if overrides.get('body'):
-            if isinstance(overrides['body'], str):
+        if overrides.get("body"):
+            if isinstance(overrides["body"], str):
                 body = body.encode()
-            if 'content-length' not in headers_dict:
-                headers_dict['content-length'] = len(body)
+            if "content-length" not in headers_dict:
+                headers_dict["content-length"] = len(body)
             overrides["body"] = base64.b64encode(body).decode()
         prepared_headers = []
         if headers_dict:
             for name, value in headers_dict.items():
                 prepared_headers.append({"name": name, "value": str(value)})
         overrides["responseHeaders"] = prepared_headers
-        params = {'requestId': self._interception_id, **overrides}
+        params = {"requestId": self._interception_id, **overrides}
         try:
             await self._client.send(FETCH_FULFILL, params)
-        except Exception:
-            LOGGER.error("Error fulfilling request.", exc_info=True)
+        except Exception as e:
+            error_msg = str(e)
+            if "Target closed" in error_msg:
+                LOGGER.debug("Target closed before request could be fulfilled.")
+            else:
+                LOGGER.error("Error fulfilling request.", exc_info=True)
 
     async def abort(self, error_reason: str = "failed") -> None:
         """
@@ -371,7 +381,7 @@ class Request():
         if error_reason not in NETWORK_ERROR_CODES_TO_REASONS.values():
             error_reason = NETWORK_ERROR_CODES_TO_REASONS[error_reason]
             if not error_reason:
-                raise NetworkError(f'Unknown error reason: {error_reason}')
+                raise NetworkError(f"Unknown error reason: {error_reason}")
         self._verify_request_allowed()
         self._interception_handled = True
         try:
@@ -382,5 +392,9 @@ class Request():
                     "errorReason": error_reason,
                 },
             )
-        except Exception:
-            LOGGER.error("Error aborting request.", exc_info=True)
+        except Exception as e:
+            error_msg = str(e)
+            if "Target closed" in error_msg:
+                LOGGER.debug("Target closed before request could be aborted.")
+            else:
+                LOGGER.error("Error aborting request.", exc_info=True)

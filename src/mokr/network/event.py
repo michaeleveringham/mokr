@@ -1,7 +1,7 @@
 from mokr.network.request import Request
 
 
-class NetworkEventManager():
+class NetworkEventManager:
     def __init__(self) -> None:
         """
         This class manages a collection of dictionaries used by

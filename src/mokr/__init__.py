@@ -8,9 +8,8 @@ from mokr.constants import BROWSER_CLOSE, MOKR_VERSION, TARGET_GET_CONTEXTS
 from mokr.launch import ChromeLauncher, FirefoxLauncher
 from mokr.utils import get_ws_endpoint
 
-
 version = MOKR_VERSION
-version_info = tuple(int(i) for i in version.split('.'))
+version_info = tuple(int(i) for i in version.split("."))
 
 
 def launch(
@@ -181,13 +180,13 @@ async def connect(
         Browser: A newly created `mokr.browser.Browser` instance.
     """
     if log_level is not None:
-        logging.getLogger('mokr').setLevel(log_level)
+        logging.getLogger("mokr").setLevel(log_level)
     if browser_type not in ("chrome", "firefox"):
         raise ValueError(f"Invalid browser type given: {browser_type}")
     if not browser_ws_endpoint:
         if not browser_url:
             raise ValueError(
-                'Must give one of browser_ws_endpoint or browser_url.'
+                "Must give one of browser_ws_endpoint or browser_url."
             )
         browser_ws_endpoint = get_ws_endpoint(browser_url)
     connection = Connection(
@@ -195,12 +194,11 @@ async def connect(
         loop if loop else asyncio.get_event_loop(),
         slow_mo,
     )
-    browser_context_ids = (
-        await connection.send(TARGET_GET_CONTEXTS)
-    ).get('browserContextIds', [])
+    browser_context_ids = (await connection.send(TARGET_GET_CONTEXTS)).get(
+        "browserContextIds", []
+    )
     default_viewport = (
-        default_viewport if default_viewport
-        else {'width': 800, 'height': 600}
+        default_viewport if default_viewport else {"width": 800, "height": 600}
     )
     browser = Browser(
         browser_type,

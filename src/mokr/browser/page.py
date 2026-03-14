@@ -84,7 +84,7 @@ from mokr.constants import (
     WORKER_CREATED,
     WORKER_DESTROYED,
     NETWORK_MGR_REQUEST,
-    PAGE_RELOAD
+    PAGE_RELOAD,
 )
 from mokr.exceptions import FirefoxNotImplementedError, PageError
 from mokr.execution import ElementHandle, JavascriptHandle
@@ -195,7 +195,7 @@ class Page(EventEmitter):
             RUMTIME_BINDING_CALL: lambda event: self._on_binding_called(event),
             PAGE_JAVASCRIPT_DIALOG_OPEN: lambda event: self._on_dialog(event),
             RUNTIME_EXCEPTION_THROWN: lambda exception: self._handle_exception(
-                exception.get('exceptionDetails')
+                exception.get("exceptionDetails")
             ),
             INSPECTOR_TARGET_CRASHED: lambda event: self._on_target_crashed(),
             PERFORMANCE_METRICS: lambda event: self._emit_metrics(event),
@@ -245,7 +245,7 @@ class Page(EventEmitter):
             Page: New `Page` with necessary remote configuration enabled.
         """
         await client.send(PAGE_ENABLE)
-        frame_tree = (await client.send(PAGE_GET_FRAME_TREE))['frameTree']
+        frame_tree = (await client.send(PAGE_GET_FRAME_TREE))["frameTree"]
         user_agent = user_agent_data["user_agent"]
         page = Page(
             browser,
@@ -290,9 +290,9 @@ class Page(EventEmitter):
         await asyncio.gather(
             client.send(
                 TARGET_SET_AUTO_ATTACH,
-                {'autoAttach': True, 'waitForDebuggerOnStart': False},
+                {"autoAttach": True, "waitForDebuggerOnStart": False},
             ),
-            client.send(PAGE_ENABLE_LIFECYCLE_EVENTS, {'enabled': True}),
+            client.send(PAGE_ENABLE_LIFECYCLE_EVENTS, {"enabled": True}),
             client.send(NETWORK_ENABLE, {}),
             client.send(RUNTIME_ENABLE, {}),
             client.send(SECURITY_ENABLE, {}),
@@ -314,12 +314,10 @@ class Page(EventEmitter):
     @staticmethod
     def _make_javascript_function_string(method_name: str, *args: Any) -> str:
         # Convert function and arguments to str.
-        _args = ', '.join(
-            [
-                json.dumps('undefined' if arg is None else arg) for arg in args
-            ]
+        _args = ", ".join(
+            [json.dumps("undefined" if arg is None else arg) for arg in args]
         )
-        expr = f'({method_name})({_args})'
+        expr = f"({method_name})({_args})"
         return expr
 
     @staticmethod
@@ -344,10 +342,10 @@ class Page(EventEmitter):
 
     @staticmethod
     def _convert_print_param(
-        parameter: None | int | float | str
+        parameter: None | int | float | str,
     ) -> float | None:
         # Convert print parameter to inches.
-        unit_to_pixels = {'px': 1, 'in': 96, 'cm': 37.8, 'mm': 3.78}
+        unit_to_pixels = {"px": 1, "in": 96, "cm": 37.8, "mm": 3.78}
         if parameter is None:
             return None
         if isinstance(parameter, (int, float)):
@@ -358,15 +356,15 @@ class Page(EventEmitter):
             if unit in unit_to_pixels:
                 value_text = text[:-2]
             else:
-                unit = 'px'
+                unit = "px"
                 value_text = text
             try:
                 value = float(value_text)
             except ValueError:
-                raise ValueError(f'Failed to parse parameter value: {text}')
+                raise ValueError(f"Failed to parse parameter value: {text}")
             pixels = value * unit_to_pixels[unit]
         else:
-            raise TypeError(f'Cannot accept type: {str(type(parameter))}')
+            raise TypeError(f"Cannot accept type: {str(type(parameter))}")
         return pixels / 96
 
     @property
@@ -474,22 +472,22 @@ class Page(EventEmitter):
         self._closed = True
 
     def _on_target_attached(self, event: dict) -> None:
-        target_info = event['targetInfo']
-        if target_info['type'] != 'worker':
+        target_info = event["targetInfo"]
+        if target_info["type"] != "worker":
             # If we don't detach from service workers, they will never die.
             try:
                 self._client.send(
                     TARGET_SEND_DETACH,
-                    {'sessionId': event['sessionId']},
+                    {"sessionId": event["sessionId"]},
                 )
             except Exception:
                 LOGGER.info("Error detaching worker.", exc_info=True)
             return
-        session_id = event['sessionId']
-        session = self._client._create_session(target_info['type'], session_id)
+        session_id = event["sessionId"]
+        session = self._client._create_session(target_info["type"], session_id)
         worker = WebWorker(
             session,
-            target_info['url'],
+            target_info["url"],
             self._add_console_message,
             self._handle_exception,
         )
@@ -497,7 +495,7 @@ class Page(EventEmitter):
         self.emit(WORKER_CREATED, worker)
 
     def _on_target_detached(self, event: dict) -> None:
-        session_id = event['sessionId']
+        session_id = event["sessionId"]
         worker = self._workers.get(session_id)
         if worker is None:
             return
@@ -505,54 +503,54 @@ class Page(EventEmitter):
         self._workers.pop(session_id)
 
     def _on_target_crashed(self, *args: Any, **kwargs: Any) -> None:
-        self.emit(ERROR, PageError('Page crashed!'))
+        self.emit(ERROR, PageError("Page crashed!"))
 
     def _on_log_entry_added(self, event: dict) -> None:
-        entry = event.get('entry', {})
-        level = entry.get('level', '')
-        text = entry.get('text', '')
-        args = entry.get('args', [])
-        source = entry.get('source', '')
+        entry = event.get("entry", {})
+        level = entry.get("level", "")
+        text = entry.get("text", "")
+        args = entry.get("args", [])
+        source = entry.get("source", "")
         for arg in args:
             release_remote_object(self._client, arg)
-        if source != 'worker':
+        if source != "worker":
             self.emit(PAGE_CONSOLE, ConsoleMessage(level, text))
 
     def _ensure_frame(self) -> Frame:
         frame = self.main_frame
         if not frame:
-            raise PageError('Page has no main frame.')
+            raise PageError("Page has no main frame.")
         return frame
 
     def _emit_metrics(self, event: dict) -> None:
         self.emit(
             METRICS,
             {
-                'title': event['title'],
-                'metrics': self._build_metrics(event.get("metrics", [])),
-            }
+                "title": event["title"],
+                "metrics": self._build_metrics(event.get("metrics", [])),
+            },
         )
 
     def _build_metrics(self, metrics: list) -> dict[str, Any]:
         supported_metrics = (
-            'Timestamp',
-            'Documents',
-            'Frames',
-            'JSEventListeners',
-            'Nodes',
-            'LayoutCount',
-            'RecalcStyleCount',
-            'LayoutDuration',
-            'RecalcStyleDuration',
-            'ScriptDuration',
-            'TaskDuration',
-            'JSHeapUsedSize',
-            'JSHeapTotalSize',
+            "Timestamp",
+            "Documents",
+            "Frames",
+            "JSEventListeners",
+            "Nodes",
+            "LayoutCount",
+            "RecalcStyleCount",
+            "LayoutDuration",
+            "RecalcStyleDuration",
+            "ScriptDuration",
+            "TaskDuration",
+            "JSHeapUsedSize",
+            "JSHeapTotalSize",
         )
         result = {}
         for metric in metrics:
-            if metric['name'] in supported_metrics:
-                result[metric['name']] = metric['value']
+            if metric["name"] in supported_metrics:
+                result[metric["name"]] = metric["value"]
         return result
 
     def _handle_exception(self, exceptionDetails: dict) -> None:
@@ -561,20 +559,20 @@ class Page(EventEmitter):
 
     def _on_console_api(self, event: dict) -> None:
         context = self._frame_manager.execution_context_by_id(
-            event['executionContextId']
+            event["executionContextId"]
         )
         values = []
-        for arg in event.get('args', []):
+        for arg in event.get("args", []):
             values.append(
                 self._frame_manager.create_javascript_handle(context, arg)
             )
-        self._add_console_message(event['type'], values)
+        self._add_console_message(event["type"], values)
 
     def _on_binding_called(self, event: dict) -> None:
-        obj = json.loads(event['payload'])
-        name = obj['name']
-        seq = obj['seq']
-        args = obj['args']
+        obj = json.loads(event["payload"])
+        name = obj["name"]
+        seq = obj["seq"]
+        args = obj["args"]
         result = self._page_bindings[name](*args)
         expression = self._make_javascript_function_string(
             METHOD_DELIVER_BINDING_RESULT,
@@ -586,8 +584,8 @@ class Page(EventEmitter):
             self._client.send(
                 RUNTIME_EVALUATE,
                 {
-                    'expression': expression,
-                    'context_id': event['executionContextId'],
+                    "expression": expression,
+                    "context_id": event["executionContextId"],
                 },
             )
         except Exception:
@@ -608,33 +606,33 @@ class Page(EventEmitter):
         text_tokens = []
         for arg in args:
             remote_object = arg._remote_object
-            if remote_object.get('objectId'):
+            if remote_object.get("objectId"):
                 text_tokens.append(arg.to_string())
             else:
                 text_tokens.append(str(serialize_remote_object(remote_object)))
-        message = ConsoleMessage(type, ' '.join(text_tokens), args)
+        message = ConsoleMessage(type, " ".join(text_tokens), args)
         self.emit(PAGE_CONSOLE, message)
 
     def _on_dialog(self, event: Any) -> None:
-        _type = event.get('type')
-        if _type == 'alert':
+        _type = event.get("type")
+        if _type == "alert":
             dialog_type = _type
-        elif _type == 'confirm':
+        elif _type == "confirm":
             dialog_type = _type
-        elif _type == 'prompt':
+        elif _type == "prompt":
             dialog_type = _type
-        elif _type == 'beforeunload':
+        elif _type == "beforeunload":
             dialog_type = _type
         else:
-            dialog_type = ''
+            dialog_type = ""
         if self._is_firefox(mute=True):
             dialog = event
         else:
             dialog = Dialog(
                 self._client,
                 dialog_type,
-                event.get('message'),
-                event.get('defaultPrompt'),
+                event.get("message"),
+                event.get("defaultPrompt"),
             )
         self.emit(PAGE_DIALOG, dialog)
 
@@ -646,9 +644,9 @@ class Page(EventEmitter):
     async def _navigate(self, url: str, referrer: str) -> str | None:
         response = await self._client.send(
             PAGE_NAVIGATE,
-            {'url': url, 'referrer': referrer},
+            {"url": url, "referrer": referrer},
         )
-        if response.get('errorText'):
+        if response.get("errorText"):
             return f'{response["errorText"]} at {url}'
         return None
 
@@ -665,51 +663,51 @@ class Page(EventEmitter):
     ) -> bytes:
         await self._client.send(
             TARGET_ACTIVATE,
-            {'targetId': self._target._targetId},
+            {"targetId": self._target._targetId},
         )
         if clip:
-            clip['scale'] = 1
+            clip["scale"] = 1
         if full_page:
             metrics = await self._client.send(PAGE_GET_LAYOUT)
-            width = math.ceil(metrics['contentSize']['width'])
-            height = math.ceil(metrics['contentSize']['height'])
+            width = math.ceil(metrics["contentSize"]["width"])
+            height = math.ceil(metrics["contentSize"]["height"])
             # Overwrite clip for full page.
             clip = dict(x=0, y=0, width=width, height=height, scale=1)
             if self._viewport is not None:
-                mobile = self._viewport.get('isMobile', False)
+                mobile = self._viewport.get("isMobile", False)
                 device_scale_factor = self._viewport.get(
-                    'deviceScaleFactor',
+                    "deviceScaleFactor",
                     scale,
                 )
-                landscape = self._viewport.get('isLandscape', False)
+                landscape = self._viewport.get("isLandscape", False)
             else:
                 mobile = False
                 device_scale_factor = scale
                 landscape = False
             if landscape:
-                screen_orientation = dict(angle=90, type='landscapePrimary')
+                screen_orientation = dict(angle=90, type="landscapePrimary")
             else:
-                screen_orientation = dict(angle=0, type='portraitPrimary')
+                screen_orientation = dict(angle=0, type="portraitPrimary")
             await self._client.send(
                 EMULATION_OVERRIDE_METRICS,
                 {
-                    'mobile': mobile,
-                    'width': width,
-                    'height': height,
-                    'deviceScaleFactor': device_scale_factor,
-                    'screenOrientation': screen_orientation,
+                    "mobile": mobile,
+                    "width": width,
+                    "height": height,
+                    "deviceScaleFactor": device_scale_factor,
+                    "screenOrientation": screen_orientation,
                 },
             )
         if omit_background and not self._is_firefox(mute=True):
             await self._client.send(
                 EMULATION_OVERRIDE_BACKGROUND,
-                {'color': {'r': 0, 'g': 0, 'b': 0, 'a': 0}},
+                {"color": {"r": 0, "g": 0, "b": 0, "a": 0}},
             )
-        opt = {'format': file_type}
+        opt = {"format": file_type}
         if clip:
-            opt['clip'] = clip
-        if file_type == 'jpeg' and jpeg_quality is not None:
-            opt['quality'] = jpeg_quality
+            opt["clip"] = clip
+        if file_type == "jpeg" and jpeg_quality is not None:
+            opt["quality"] = jpeg_quality
         # Send the screenshot request with the given parameters.
         response = await self._client.send(PAGE_SCREENSHOT, opt)
         # Restore any overrides.
@@ -718,12 +716,12 @@ class Page(EventEmitter):
         if full_page and self._viewport is not None:
             await self.set_viewport(self._viewport)
         # Encode and write file, if requested.
-        if encoding == 'base64':
-            buffer = response.get('data', b'')
+        if encoding == "base64":
+            buffer = response.get("data", b"")
         else:
-            buffer = base64.b64decode(response.get('data', b''))
+            buffer = base64.b64decode(response.get("data", b""))
         if file_path:
-            with open(file_path, 'wb') as f:
+            with open(file_path, "wb") as f:
                 f.write(buffer)
         return buffer
 
@@ -734,8 +732,8 @@ class Page(EventEmitter):
         wait_until: list[LIFECYCLE_EVENTS] | LIFECYCLE_EVENTS = "load",
     ) -> Response | None:
         history = await self._client.send(PAGE_GET_NAVIGATION_HISTORY)
-        _count = history.get('currentIndex', 0) + delta
-        entries = history.get('entries', [])
+        _count = history.get("currentIndex", 0) + delta
+        entries = history.get("entries", [])
         if len(entries) <= _count:
             return None
         entry = entries.get(_count, {})
@@ -743,8 +741,7 @@ class Page(EventEmitter):
             await asyncio.gather(
                 self.wait_for_navigation(timeout, wait_until),
                 self._client.send(
-                    PAGE_NAVIGATE_TO_HISTORY_ENTRY,
-                    {'entryId': entry.get('id')}
+                    PAGE_NAVIGATE_TO_HISTORY_ENTRY, {"entryId": entry.get("id")}
                 ),
             )
         )[0]
@@ -921,7 +918,7 @@ class Page(EventEmitter):
         frame = self._ensure_frame()
         context = await frame.execution_context()
         if not context:
-            raise PageError('No context attached to frame.')
+            raise PageError("No context attached to frame.")
         return await context.evaluate_handle(page_function, *args)
 
     async def query_objects(
@@ -952,7 +949,7 @@ class Page(EventEmitter):
         frame = self._ensure_frame()
         context = await frame.execution_context()
         if not context:
-            raise PageError('No context attached to frame.')
+            raise PageError("No context attached to frame.")
         return await context.query_objects(javascript_handle)
 
     async def query_selector(self, selector: str) -> ElementHandle | None:
@@ -1006,7 +1003,7 @@ class Page(EventEmitter):
                 each cookie.
         """
         response = await self._client.send(NETWORK_GET_ALL_COOKIES)
-        return response.get('cookies', [])
+        return response.get("cookies", [])
 
     async def get_cookies_by_urls(
         self,
@@ -1028,7 +1025,7 @@ class Page(EventEmitter):
         if urls:
             urls = params["urls"] = tuple(urls)
         response = await self._client.send(NETWORK_GET_COOKIES, params)
-        return response.get('cookies', [])
+        return response.get("cookies", [])
 
     async def delete_cookies(self, cookies: list[dict]) -> None:
         """
@@ -1057,16 +1054,16 @@ class Page(EventEmitter):
         items = []
         for cookie in cookies:
             item = cookie.copy()
-            if item.get('url') == 'about:blank':
-                name = item.get('name', '')
+            if item.get("url") == "about:blank":
+                name = item.get("name", "")
                 raise PageError(f'Blank page can not have cookie "{name}"')
-            if item.get('url', '').startswith('data:'):
-                name = item.get('name', '')
+            if item.get("url", "").startswith("data:"):
+                name = item.get("name", "")
                 raise PageError(f'Data URL page can not have cookie "{name}"')
             items.append(item)
         await self.delete_cookies(items)
         if items:
-            await self._client.send(NETWORK_SET_COOKIES, {'cookies': items})
+            await self._client.send(NETWORK_SET_COOKIES, {"cookies": items})
 
     async def embed_javascript(
         self,
@@ -1141,11 +1138,7 @@ class Page(EventEmitter):
         frame = self._ensure_frame()
         return await frame.embed_style(file_content, file_path, url)
 
-    async def expose_function(
-        self,
-        name: str,
-        method: Callable
-    ) -> None:
+    async def expose_function(self, name: str, method: Callable) -> None:
         """
         Bind a remote JavaScript function "name" to local `method`. This will
         allow triggering local `method` by calling `window["name"]()` in the
@@ -1161,7 +1154,7 @@ class Page(EventEmitter):
         self._is_firefox(caller=self)
         if self._page_bindings.get(name):
             raise PageError(
-                f'Failed to add page binding with name {name}:'
+                f"Failed to add page binding with name {name}:"
                 f' window["{name}"] already exists.'
             )
         self._page_bindings[name] = method
@@ -1169,8 +1162,8 @@ class Page(EventEmitter):
             METHOD_ADD_PAGE_BINDING,
             name,
         )
-        await self._client.send(RUNTIME_ADD_BINDING, {'name': name})
-        await self._client.send(PAGE_ADD_SCRIPT_TO_EVAL, {'source': expression})
+        await self._client.send(RUNTIME_ADD_BINDING, {"name": name})
+        await self._client.send(PAGE_ADD_SCRIPT_TO_EVAL, {"source": expression})
         loop = asyncio.get_event_loop()
         await asyncio.wait(
             [
@@ -1297,7 +1290,7 @@ class Page(EventEmitter):
             Response | None: Last response recieved after all redirects, if any.
         """
         main_frame = self._ensure_frame()
-        referrer = self._network_manager.extra_http_headers.get('referer', '')
+        referrer = self._network_manager.extra_http_headers.get("referer", "")
         all_responses = {}
         event_listeners = [
             add_event_listener(
@@ -1542,8 +1535,7 @@ class Page(EventEmitter):
             return
         self._javascript_enabled = choice
         await self._client.send(
-            EMULATION_DISABLE_SCRIPT_EXECUTION,
-            {'value': not choice}
+            EMULATION_DISABLE_SCRIPT_EXECUTION, {"value": not choice}
         )
 
     async def set_bypass_csp(self, choice: bool) -> None:
@@ -1557,7 +1549,7 @@ class Page(EventEmitter):
             choice (bool): True to enable, False to disable.
         """
         self._is_firefox(caller=self)
-        await self._client.send(PAGE_SET_BYPASS_CSP, {'enabled': choice})
+        await self._client.send(PAGE_SET_BYPASS_CSP, {"enabled": choice})
 
     async def emulate_media(
         self,
@@ -1575,11 +1567,11 @@ class Page(EventEmitter):
             ValueError: _description_
         """
         self._is_firefox(caller=self)
-        if media_type not in ['screen', 'print', None, '']:
-            raise ValueError(f'Unsupported media type: {media_type}')
+        if media_type not in ["screen", "print", None, ""]:
+            raise ValueError(f"Unsupported media type: {media_type}")
         await self._client.send(
             EMULATION_SET_EMULATED_MEDIA,
-            {'media': media_type or ''},
+            {"media": media_type or ""},
         )
 
     async def set_viewport(self, viewport: dict) -> None:
@@ -1638,7 +1630,7 @@ class Page(EventEmitter):
             page_function (str): JavaScript function to attach.
         """
         source = self._make_javascript_function_string(page_function, *args)
-        await self._client.send(PAGE_ADD_SCRIPT_TO_EVAL, {'source': source})
+        await self._client.send(PAGE_ADD_SCRIPT_TO_EVAL, {"source": source})
 
     async def set_request_cache(self, choice: bool = True) -> None:
         """
@@ -1654,7 +1646,7 @@ class Page(EventEmitter):
         """
         await self._client.send(
             NETWORK_CACHE_DISABLE,
-            {'cacheDisabled': not choice},
+            {"cacheDisabled": not choice},
         )
 
     async def screenshot(
@@ -1704,14 +1696,14 @@ class Page(EventEmitter):
             screenshot_type = file_type
         elif file_path:
             mime_type, _ = mimetypes.guess_type(file_path)
-            if mime_type == 'image/png':
-                screenshot_type = 'png'
-            elif mime_type == 'image/jpeg':
-                screenshot_type = 'jpeg'
+            if mime_type == "image/png":
+                screenshot_type = "png"
+            elif mime_type == "image/jpeg":
+                screenshot_type = "jpeg"
             else:
                 screenshot_type = f"{mime_type} (mimetype)"
-        if screenshot_type not in ['png', 'jpeg']:
-            raise ValueError(f'Unsupported screenshot type: {screenshot_type}')
+        if screenshot_type not in ["png", "jpeg"]:
+            raise ValueError(f"Unsupported screenshot type: {screenshot_type}")
         return await self._screenshot_task(
             screenshot_type,
             file_path,
@@ -1814,39 +1806,39 @@ class Page(EventEmitter):
             bytes: File content as bytes.
         """
         paper_formats = dict(
-            letter={'width': 8.5, 'height': 11},
-            legal={'width': 8.5, 'height': 14},
-            tabloid={'width': 11, 'height': 17},
-            ledger={'width': 17, 'height': 11},
-            a0={'width': 33.1, 'height': 46.8},
-            a1={'width': 23.4, 'height': 33.1},
-            a2={'width': 16.5, 'height': 23.4},
-            a3={'width': 11.7, 'height': 16.5},
-            a4={'width': 8.27, 'height': 11.7},
-            a5={'width': 5.83, 'height': 8.27},
+            letter={"width": 8.5, "height": 11},
+            legal={"width": 8.5, "height": 14},
+            tabloid={"width": 11, "height": 17},
+            ledger={"width": 17, "height": 11},
+            a0={"width": 33.1, "height": 46.8},
+            a1={"width": 23.4, "height": 33.1},
+            a2={"width": 16.5, "height": 23.4},
+            a3={"width": 11.7, "height": 16.5},
+            a4={"width": 8.27, "height": 11.7},
+            a5={"width": 5.83, "height": 8.27},
         )
         if not header_template:
-            header_template = ''
+            header_template = ""
         if not footer_template:
-            footer_template = ''
+            footer_template = ""
         if not page_ranges:
-            page_ranges = ''
+            page_ranges = ""
         paper_width = 8.5
         paper_height = 11.0
         if paper_format:
             fmt = paper_formats.get(paper_format.lower())
             if not fmt:
                 raise ValueError(f"Unknown paper format: {paper_format}")
-            paper_width = fmt['width']
-            paper_height = fmt['height']
+            paper_width = fmt["width"]
+            paper_height = fmt["height"]
         else:
             paper_width = self._convert_print_param(width) or paper_width
             paper_height = self._convert_print_param(height) or paper_height
         if margin:
-            margin_top = self._convert_print_param(margin.get('top')) or 0
-            margin_left = self._convert_print_param(margin.get('left')) or 0
-            margin_bottom = self._convert_print_param(margin.get('bottom')) or 0
-            margin_right = self._convert_print_param(margin.get('right')) or 0
+            margin_top = self._convert_print_param(margin.get("top")) or 0
+            margin_left = self._convert_print_param(margin.get("left")) or 0
+            margin_bottom = self._convert_print_param(margin.get("bottom")) or 0
+            margin_right = self._convert_print_param(margin.get("right")) or 0
         else:
             margin_top = margin_left = margin_bottom = margin_right = 0
         result = await self._client.send(
@@ -1868,9 +1860,9 @@ class Page(EventEmitter):
                 preferCSSPageSize=prefer_css_page_size,
             ),
         )
-        buffer = base64.b64decode(result.get('data', b''))
+        buffer = base64.b64decode(result.get("data", b""))
         if file_path:
-            with open(file_path, 'wb') as f:
+            with open(file_path, "wb") as f:
                 f.write(buffer)
         return buffer
 
@@ -1900,13 +1892,13 @@ class Page(EventEmitter):
         conn = self._client._connection
         if conn is None:
             raise PageError(
-                'Protocol Error: Connection Closed. '
-                'Most likely the page has been closed.'
+                "Protocol Error: Connection Closed. "
+                "Most likely the page has been closed."
             )
         if run_before_unload:
             await self._client.send(PAGE_CLOSE)
         else:
-            await conn.send(TARGET_CLOSE, {'targetId': self._target._targetId})
+            await conn.send(TARGET_CLOSE, {"targetId": self._target._targetId})
             await self._target._is_closed_promise
 
     async def click(
@@ -2119,14 +2111,17 @@ class Page(EventEmitter):
         request: Request | None = None,
         body: str | None = None,
         browsing_topics: bool | None = None,
-        cache: Literal[
-            "default",
-            "no-store",
-            "reload",
-            "no-cache",
-            "force-cache",
-            "only-if-cache",
-        ] | None = None,
+        cache: (
+            Literal[
+                "default",
+                "no-store",
+                "reload",
+                "no-cache",
+                "force-cache",
+                "only-if-cache",
+            ]
+            | None
+        ) = None,
         credentials: Literal["omit", "same-origin", "include"] | None = None,
         headers: dict | None = None,
         method: str = "GET",
@@ -2134,16 +2129,19 @@ class Page(EventEmitter):
         priority: Literal["high", "low", "auto"] | None = None,
         redirect: Literal["follow", "error", "manual"] | None = None,
         referrer: str | None = None,
-        referrer_policy: Literal[
-            "no-referrer",
-            "no-referrer-when-downgrade",
-            "same-origin",
-            "origin",
-            "strict-origin",
-            "origin-when-cross-origin",
-            "strict-origin-when-cross-origin",
-            "unsafe-url",
-        ] | None = None,
+        referrer_policy: (
+            Literal[
+                "no-referrer",
+                "no-referrer-when-downgrade",
+                "same-origin",
+                "origin",
+                "strict-origin",
+                "origin-when-cross-origin",
+                "strict-origin-when-cross-origin",
+                "unsafe-url",
+            ]
+            | None
+        ) = None,
     ) -> Response:
         """
         Send a fetch request.
@@ -2212,7 +2210,7 @@ class Page(EventEmitter):
             priority,
             redirect,
             referrer,
-            referrer_policy
+            referrer_policy,
         )
 
     async def send(

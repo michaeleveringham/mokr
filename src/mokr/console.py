@@ -64,8 +64,7 @@ def main() -> None:
     parser = ArgumentParser("mokr", description="A remote-controlled browser.")
     subparsers = parser.add_subparsers(dest="command")
     install_parser = subparsers.add_parser(
-        "install",
-        description="Install required browser."
+        "install", description="Install required browser."
     )
     install_parser.add_argument(
         "--force",
@@ -132,7 +131,8 @@ def main() -> None:
     options = parser.parse_args()
     if options.command == "install":
         browser_types = (
-            [options.browser_type] if options.browser_type
+            [options.browser_type]
+            if options.browser_type
             else ["chrome", "firefox"]
         )
         for browser_type in browser_types:

@@ -80,9 +80,7 @@ class Browser(EventEmitter):
         for context_id in context_ids:
             self._contexts[context_id] = BrowserContext(self, context_id)
         self._targets: dict[str, Target] = dict()
-        self._connection._set_closed_callback(
-            lambda: self.emit(DISCONNECTED)
-        )
+        self._connection._set_closed_callback(lambda: self.emit(DISCONNECTED))
         self._connection.on(
             TARGET_TARGET_CREATED,
             lambda event: loop.create_task(self._target_created(event)),
@@ -111,7 +109,7 @@ class Browser(EventEmitter):
     @property
     def version(self) -> str:
         """Get browser version (product from browser full version info.)"""
-        return self._version['product'] if self._version else ''
+        return self._version["product"] if self._version else ""
 
     @property
     def user_agent(self) -> str:
@@ -120,7 +118,7 @@ class Browser(EventEmitter):
         default to override with. This can be overidden later again
         with `mokr.browser.Page.set_user_agent`.
         """
-        default = self._version.get("userAgent", '') if self._version else ''
+        default = self._version.get("userAgent", "") if self._version else ""
         return self._default_user_agent if self._default_user_agent else default
 
     @property
@@ -164,13 +162,13 @@ class Browser(EventEmitter):
     async def _dispose_context(self, context_id: str) -> None:
         await self._connection.send(
             TARGET_DISPOSE_BROWSER_CONTEXT,
-            {'browserContextId': context_id},
+            {"browserContextId": context_id},
         )
         self._contexts.pop(context_id, None)
 
     async def _target_created(self, event: dict) -> None:
-        target_info = event['targetInfo']
-        browser_context_id = target_info.get('browserContextId')
+        target_info = event["targetInfo"]
+        browser_context_id = target_info.get("browserContextId")
         if browser_context_id and browser_context_id in self._contexts:
             context = self._contexts[browser_context_id]
         else:
@@ -192,14 +190,14 @@ class Browser(EventEmitter):
             self._proxy_credentials,
             user_agent_data,
         )
-        if target_info['targetId'] in self._targets:
-            raise BrowserError('Target should not exist before create.')
-        self._targets[target_info['targetId']] = target
+        if target_info["targetId"] in self._targets:
+            raise BrowserError("Target should not exist before create.")
+        self._targets[target_info["targetId"]] = target
         if await target._initialized_promise:
             self._emit_cascade(TARGET_CREATED, context, target)
 
     async def _target_destroyed(self, event: dict) -> None:
-        target = self._targets.pop(event['targetId'])
+        target = self._targets.pop(event["targetId"])
         target._closed_callback()
         if await target._initialized_promise:
             self._emit_cascade(
@@ -210,12 +208,12 @@ class Browser(EventEmitter):
         target._initialized_callback(False)
 
     async def _target_info_changed(self, event: dict) -> None:
-        target = self._targets.get(event['targetInfo']['targetId'])
+        target = self._targets.get(event["targetInfo"]["targetId"])
         if not target:
-            raise BrowserError('Target should exist before info changed.')
+            raise BrowserError("Target should exist before info changed.")
         previous_url = target.url
         was_initialized = target._is_initialized
-        target._target_info_changed(event['targetInfo'])
+        target._target_info_changed(event["targetInfo"])
         if was_initialized and previous_url != target.url:
             self._emit_cascade(
                 TARGET_CHANGED,
@@ -224,17 +222,17 @@ class Browser(EventEmitter):
             )
 
     async def _create_page_in_context(self, context_id: str | None) -> Page:
-        options = {'url': 'about:blank'}
+        options = {"url": "about:blank"}
         if context_id:
-            options['browserContextId'] = context_id
+            options["browserContextId"] = context_id
         response = await self._connection.send(TARGET_CREATE_TARGET, options)
-        target_id = response.get('targetId')
+        target_id = response.get("targetId")
         target = self._targets.get(target_id)
         if target is None or not await target._initialized_promise:
-            raise BrowserError('Failed to create target for page.')
+            raise BrowserError("Failed to create target for page.")
         page = await target.page()
         if page is None:
-            raise BrowserError('Failed to create page.')
+            raise BrowserError("Failed to create page.")
         return page
 
     async def first_page(self) -> Page | None:
@@ -257,7 +255,7 @@ class Browser(EventEmitter):
         self._version = await self._get_version()
         await self._connection.send(
             TARGET_SET_DISCOVER_TARGETS,
-            {'discover': True},
+            {"discover": True},
         )
         return self
 
@@ -280,7 +278,7 @@ class Browser(EventEmitter):
             BrowserContext: A new `mokr.browser.BrowserContext`.
         """
         obj = await self._connection.send(TARGET_CREATE_BROWSER_CONTEXT)
-        browser_context_id = obj['browserContextId']
+        browser_context_id = obj["browserContextId"]
         context = BrowserContext(self, browser_context_id)
         self._contexts[browser_context_id] = context
         return context
@@ -304,7 +302,8 @@ class Browser(EventEmitter):
                 this browser.
         """
         return [
-            target for target in self._targets.values()
+            target
+            for target in self._targets.values()
             if target._is_initialized
         ]
 
@@ -317,7 +316,8 @@ class Browser(EventEmitter):
             list[Page]: All pages within all contexts in this browser.
         """
         return [
-            page for page_list in [
+            page
+            for page_list in [
                 await context.pages() for context in self.browser_contexts
             ]
             for page in page_list

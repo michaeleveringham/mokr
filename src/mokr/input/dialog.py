@@ -2,7 +2,7 @@ from mokr.connection import DevtoolsConnection
 from mokr.constants import PAGE_HANDLE_DIALOG
 
 
-class Dialog():
+class Dialog:
     def __init__(
         self,
         client: DevtoolsConnection,
@@ -33,7 +33,7 @@ class Dialog():
         self._type = dialog_type
         self._message = message
         self._handled = False
-        self._default_value = '' if default_value is None else default_value
+        self._default_value = "" if default_value is None else default_value
 
     @property
     def kind(self) -> str:
@@ -56,7 +56,7 @@ class Dialog():
         """
         return self._default_value
 
-    async def accept(self, prompt_text: str = '') -> None:
+    async def accept(self, prompt_text: str = "") -> None:
         """
         Accept the remote dialog. Can optionally accept with the given
         `prompt_text`, if `Dialog.type` is "prompt".
@@ -68,15 +68,12 @@ class Dialog():
         await self._client.send(
             PAGE_HANDLE_DIALOG,
             {
-                'accept': True,
-                'prompt_text': prompt_text,
-            }
+                "accept": True,
+                "prompt_text": prompt_text,
+            },
         )
 
     async def dismiss(self) -> None:
         """Dismiss the remote dialog."""
         self._handled = True
-        await self._client.send(
-            PAGE_HANDLE_DIALOG,
-            {'accept': False}
-        )
+        await self._client.send(PAGE_HANDLE_DIALOG, {"accept": False})

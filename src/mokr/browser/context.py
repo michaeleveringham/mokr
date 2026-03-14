@@ -54,7 +54,8 @@ class BrowserContext(EventEmitter):
             list[Target]: All initialised targets within this context.
         """
         return [
-            target for target in self._browser.targets()
+            target
+            for target in self._browser.targets()
             if target.browser_context == self
         ]
 
@@ -99,5 +100,5 @@ class BrowserContext(EventEmitter):
             BrowserError: Raised if called from the default context.
         """
         if self._id is None:
-            raise BrowserError('Non-incognito profile cannot be closed.')
+            raise BrowserError("Non-incognito profile cannot be closed.")
         await self._browser._dispose_context(self._id)

@@ -23,7 +23,6 @@ from mokr.constants import (
     NETWORK_REQUEST_WILL_BE_SENT,
     NETWORK_RESPONSE_RECVD,
     NETWORK_RESPONSE_RECVD_EXTRA,
-
 )
 from mokr.frame import FrameManager
 from mokr.network.event import NetworkEventManager
@@ -138,8 +137,8 @@ class ChromeNetworkManager(NetworkManager):
         request_will_be_sent_event: dict,
         request_paused_event: dict,
     ) -> None:
-        request_will_be_sent_event['request']['headers'].update(
-            request_paused_event['request']['headers']
+        request_will_be_sent_event["request"]["headers"].update(
+            request_paused_event["request"]["headers"]
         )
 
     @property
@@ -151,27 +150,27 @@ class ChromeNetworkManager(NetworkManager):
         return self._extra_http_headers
 
     def _on_auth_required(self, event: dict) -> None:
-        response = 'Default'
-        if event['requestId'] in self._attempted_authentications:
-            response = 'CancelAuth'
+        response = "Default"
+        if event["requestId"] in self._attempted_authentications:
+            response = "CancelAuth"
         elif self.credentials:
-            self._attempted_authentications.add(event['requestId'])
-            response = 'ProvideCredentials'
+            self._attempted_authentications.add(event["requestId"])
+            response = "ProvideCredentials"
             params = {"response": response}
-            creds = getattr(self, 'credentials', {})
-            params["username"] = creds.get('username')
-            params["password"] = creds.get('password')
+            creds = getattr(self, "credentials", {})
+            params["username"] = creds.get("username")
+            params["password"] = creds.get("password")
             params = {k: v for k, v in params.items() if v}
         self._client.send(
             FETCH_CONTINUE_AUTH,
             {
-                'requestId': event['requestId'],
-                'authChallengeResponse': params,
+                "requestId": event["requestId"],
+                "authChallengeResponse": params,
             },
         )
 
     def _on_request_from_cache(self, event: dict) -> None:
-        request = self._network_event_manager.get_request(event['requestId'])
+        request = self._network_event_manager.get_request(event["requestId"])
         if request:
             request._from_memory_cache = True
         self.emit(NETWORK_MGR_REQUEST_FROM_CACHE, request)
@@ -185,12 +184,12 @@ class ChromeNetworkManager(NetworkManager):
         response = Response(
             self._client,
             request,
-            response_payload.get('status', 0),
-            response_payload.get('headers', {}),
-            response_payload.get('fromDiskCache'),
-            response_payload.get('fromServiceWorker'),
+            response_payload.get("status", 0),
+            response_payload.get("headers", {}),
+            response_payload.get("fromDiskCache"),
+            response_payload.get("fromServiceWorker"),
             False,
-            response_payload.get('securityDetails'),
+            response_payload.get("securityDetails"),
             extra_info,
         )
         request._response = response
@@ -201,11 +200,9 @@ class ChromeNetworkManager(NetworkManager):
         self.emit(NETWORK_MGR_REQUEST_FINISHED, request)
 
     def _emit_response_event(
-        self,
-        response_received: dict,
-        extra_info: dict = None
+        self, response_received: dict, extra_info: dict = None
     ) -> None:
-        request_id = response_received['requestId']
+        request_id = response_received["requestId"]
         request = self._network_event_manager.get_request(request_id)
         # FileUpload sends a response without a matching request.
         if not request:
@@ -213,36 +210,33 @@ class ChromeNetworkManager(NetworkManager):
         extraInfos = self._network_event_manager.response_extra_info(request_id)
         if extraInfos:
             LOGGER.error(
-                'Unexpected extraInfo events for request'
-                f' {request_id}'
+                "Unexpected extraInfo events for request" f" {request_id}"
             )
         # Chrome sends wrong extraInfo events for responses served from cache.
         # See https://github.com/puppeteer/puppeteer/issues/9965 and
         # https://crbug.com/1340398.
-        if response_received['response']['fromDiskCache']:
+        if response_received["response"]["fromDiskCache"]:
             extra_info = None
-        _response = response_received.get('response', {})
+        _response = response_received.get("response", {})
         response = Response(
             self._client,
             request,
-            _response.get('status', 0),
-            _response.get('headers', {}),
-            _response.get('fromDiskCache'),
-            _response.get('fromServiceWorker'),
+            _response.get("status", 0),
+            _response.get("headers", {}),
+            _response.get("fromDiskCache"),
+            _response.get("fromServiceWorker"),
             False,
-            _response.get('securityDetails'),
+            _response.get("securityDetails"),
             extra_info,
         )
         request._response = response
         self.emit(NETWORK_MGR_RESPONSE, response)
 
     def _on_response_received(self, event: dict) -> None:
-        request_id = event['requestId']
+        request_id = event["requestId"]
         request = self._network_event_manager.get_request(request_id)
         extra_info = None
-        if (
-            request and not request._from_memory_cache and event['hasExtraInfo']
-        ):
+        if request and not request._from_memory_cache and event["hasExtraInfo"]:
             _responseExtraInfo = (
                 self._network_event_manager.response_extra_info(request_id)
             )
@@ -253,7 +247,7 @@ class ChromeNetworkManager(NetworkManager):
             # Wait until we get the corresponding ExtraInfo event.
             self._network_event_manager.queue_event_group(
                 request_id,
-                {'responseReceivedEvent': event},
+                {"responseReceivedEvent": event},
             )
             return
         self._emit_response_event(event, extra_info)
@@ -262,15 +256,15 @@ class ChromeNetworkManager(NetworkManager):
         # If the response event for this request is still waiting on a
         # corresponding ExtraInfo event, then wait to emit this event too.
         queued_events = self._network_event_manager.get_queued_event_group(
-            event['requestId']
+            event["requestId"]
         )
         if queued_events:
-            queued_events['loadingFinishedEvent'] = event
+            queued_events["loadingFinishedEvent"] = event
         else:
             self._emit_loading_finished(event)
 
     def _emit_loading_finished(self, event: dict) -> None:
-        request = self._network_event_manager.get_request(event['requestId'])
+        request = self._network_event_manager.get_request(event["requestId"])
         # For certain requestIds we never receive requestWillBeSent event.
         # @see https://crbug.com/750469
         # Under certain conditions we never get the Network.responseReceived
@@ -284,20 +278,20 @@ class ChromeNetworkManager(NetworkManager):
         # If the response event for this request is still waiting on a
         # corresponding ExtraInfo event, then wait to emit this event too.
         queued_events = self._network_event_manager.get_queued_event_group(
-            event['requestId']
+            event["requestId"]
         )
         if queued_events:
-            queued_events['loadingFailedEvent'] = event
+            queued_events["loadingFailedEvent"] = event
         else:
             self._emit_loading_failed(event)
 
     def _emit_loading_failed(self, event):
-        request = self._network_event_manager.get_request(event['requestId'])
+        request = self._network_event_manager.get_request(event["requestId"])
         # // For certain requestIds we never receive requestWillBeSent event.
         # // @see https://crbug.com/750469
         if not request:
             return
-        request._failure_text = event['errorText']
+        request._failure_text = event["errorText"]
         self.forget_request(request, True)
         self.emit(NETWORK_MGR_REQUEST_FAILED, request)
 
@@ -310,9 +304,9 @@ class ChromeNetworkManager(NetworkManager):
                 self._client.send(
                     FETCH_ENABLED,
                     {
-                        'handleAuthRequests': True,
-                        'patterns': [{'urlPattern': '*'}],
-                    }
+                        "handleAuthRequests": True,
+                        "patterns": [{"urlPattern": "*"}],
+                    },
                 ),
             )
         else:
@@ -323,11 +317,10 @@ class ChromeNetworkManager(NetworkManager):
 
     async def _on_request_will_be_sent(self, event: dict) -> None:
         # Request interception doesn't happen for data URLs.
-        if (
-            self._user_request_interception_enabled
-            and not event['request']['url'].startswith('data:')
-        ):
-            network_request_id = event['requestId']
+        if self._user_request_interception_enabled and not event["request"][
+            "url"
+        ].startswith("data:"):
+            network_request_id = event["requestId"]
             self._network_event_manager.store_request_will_be_sent(
                 network_request_id,
                 event,
@@ -339,7 +332,7 @@ class ChromeNetworkManager(NetworkManager):
                 )
             )
             if request_paused_event:
-                fetch_request_id = request_paused_event['requestId']
+                fetch_request_id = request_paused_event["requestId"]
                 self._patch_request_event_headers(event, request_paused_event)
                 await self._on_request(event, fetch_request_id)
                 self._network_event_manager.forget_request_paused(
@@ -359,10 +352,10 @@ class ChromeNetworkManager(NetworkManager):
         ):
             self._client.send(
                 FETCH_CONTINUE,
-                {'requestId': event['requestId']},
+                {"requestId": event["requestId"]},
             )
-        network_request_id = event.get('networkId')
-        fetch_request_id = event['requestId']
+        network_request_id = event.get("networkId")
+        fetch_request_id = event["requestId"]
         if not network_request_id:
             await self._on_request_without_network_instrumentation(event)
             return
@@ -375,12 +368,12 @@ class ChromeNetworkManager(NetworkManager):
         # Redirect requests have the same requestId.
         if request_will_be_sent_event and (
             (
-                request_will_be_sent_event['request']['url']
-                != event['request']['url']
+                request_will_be_sent_event["request"]["url"]
+                != event["request"]["url"]
             )
             or (
-                request_will_be_sent_event['request']['method']
-                != event['request']['method']
+                request_will_be_sent_event["request"]["method"]
+                != event["request"]["method"]
             )
         ):
             self._network_event_manager.forget_request_will_be_sent(
@@ -404,19 +397,20 @@ class ChromeNetworkManager(NetworkManager):
         # If an event has no networkId it should not have any network events.
         # Still want to dispatch it for the interception by the user.
         frame = (
-            self._frame_manager.frame(event['frameId'])
-            if event.get('frameId') else None
+            self._frame_manager.frame(event["frameId"])
+            if event.get("frameId")
+            else None
         )
         request = Request(
             self._page,
             self._client,
-            event['requestId'],
+            event["requestId"],
             None,
             False,
             self._user_request_interception_enabled,
-            event.get('request', {}).get('url'),
-            event.get('type', ''),
-            event.get('request', {}),
+            event.get("request", {}).get("url"),
+            event.get("type", ""),
+            event.get("request", {}),
             frame,
             [],
             self._interception_callback_chain,
@@ -434,7 +428,7 @@ class ChromeNetworkManager(NetworkManager):
     ) -> None:
         redirect_chain = []
         mokr_request_uuid = self._inspect_stack_for_mokr_uuid(event)
-        if event.get('redirectResponse'):
+        if event.get("redirectResponse"):
             # Want to emit "response" and "requestfinished" events for the
             # redirectResponse, but can't do so unless we have an event's
             # "responseExtraInfo" ready to pair it up with. If we don't have any
@@ -444,10 +438,10 @@ class ChromeNetworkManager(NetworkManager):
             # `mokr.network.Request` via a "NetworkManager.Request" event
             # because it should come after "response"/"requestfinished" events.
             redirect_response_extra_info = None
-            if event.get('redirectHasExtraInfo'):
+            if event.get("redirectHasExtraInfo"):
                 _response_extra_info = (
                     self._network_event_manager.response_extra_info(
-                        event['requestId']
+                        event["requestId"]
                     )
                 )
                 if _response_extra_info:
@@ -455,33 +449,33 @@ class ChromeNetworkManager(NetworkManager):
                     _response_extra_info.remove(redirect_response_extra_info)
                 if not redirect_response_extra_info:
                     self._network_event_manager.queue_redirect_info(
-                        event['requestId'],
+                        event["requestId"],
                         {"event": event, "fetchRequestId": fetch_request_id},
                     )
                     return
             request = self._network_event_manager.get_request(
-                event['requestId']
+                event["requestId"]
             )
             # If we connect late, may have missed requestWillBeSent.
             if request:
                 self._handle_request_redirect(
                     request,
-                    event.get('redirectResponse'),
-                    redirect_response_extra_info
+                    event.get("redirectResponse"),
+                    redirect_response_extra_info,
                 )
                 redirect_chain = request._redirect_chain
         frame = (
-            self._frame_manager.frame(event['frameId'])
-            if event.get('frameId') else None
+            self._frame_manager.frame(event["frameId"])
+            if event.get("frameId")
+            else None
         )
         is_navigation_request = bool(
-            event.get('requestId') == event.get('loaderId')
-            and event.get('type') == 'Document'
+            event.get("requestId") == event.get("loaderId")
+            and event.get("type") == "Document"
         )
         # Bind the same FetchDomain request uuid to redirect requests.
-        if (
-            not mokr_request_uuid
-            and any(r._mokr_request_uuid for r in redirect_chain)
+        if not mokr_request_uuid and any(
+            r._mokr_request_uuid for r in redirect_chain
         ):
             mokr_request_uuid = next(
                 iter(r._mokr_request_uuid for r in redirect_chain)
@@ -489,13 +483,13 @@ class ChromeNetworkManager(NetworkManager):
         request = Request(
             self._page,
             self._client,
-            event['requestId'],
+            event["requestId"],
             fetch_request_id,
             is_navigation_request,
             self._user_request_interception_enabled,
-            event.get('request', {}).get('url'),
-            event.get('type', ''),
-            event.get('request', {}),
+            event.get("request", {}).get("url"),
+            event.get("type", ""),
+            event.get("request", {}),
             frame,
             redirect_chain,
             self._interception_callback_chain,
@@ -505,24 +499,24 @@ class ChromeNetworkManager(NetworkManager):
             request._redirect_chain.append(request)
         if mokr_request_uuid:
             request._mokr_request_uuid = mokr_request_uuid
-        self._network_event_manager.store_request(event['requestId'], request)
+        self._network_event_manager.store_request(event["requestId"], request)
         self.emit(NETWORK_MGR_REQUEST, request)
         await request._finalize_interceptions()
 
     async def _on_response_received_extra_info(self, event: dict) -> None:
         # We may have skipped a redirect response/request pair due to waiting
         # for this ExtraInfo event.
-        request_id = event['requestId']
+        request_id = event["requestId"]
         redirect_info = self._network_event_manager.take_queued_redirect_info(
             request_id
         )
         if redirect_info:
-            self._network_event_manager.response_extra_info(
-                request_id
-            ).append(event)
+            self._network_event_manager.response_extra_info(request_id).append(
+                event
+            )
             await self._on_request(
-                redirect_info['event'],
-                redirect_info['fetchRequestId'],
+                redirect_info["event"],
+                redirect_info["fetchRequestId"],
             )
             return
         # We may have skipped response and loading events because we didn't have
@@ -533,20 +527,20 @@ class ChromeNetworkManager(NetworkManager):
         if queued_events:
             self._network_event_manager.forget_queued_event_group(request_id)
             self._emit_response_event(
-                queued_events['responseReceivedEvent'],
+                queued_events["responseReceivedEvent"],
                 event,
             )
-            if queued_events.get('loadingFinishedEvent'):
+            if queued_events.get("loadingFinishedEvent"):
                 self._emit_loading_finished(
-                    queued_events['loadingFinishedEvent']
+                    queued_events["loadingFinishedEvent"]
                 )
-            if queued_events.get('loadingFailedEvent'):
-                self._emit_loading_failed(queued_events['loadingFailedEvent'])
+            if queued_events.get("loadingFailedEvent"):
+                self._emit_loading_failed(queued_events["loadingFailedEvent"])
             return
         # Wait until we get another event that can use this ExtraInfo event.
-        self._network_event_manager.response_extra_info(
-            request_id
-        ).append(event)
+        self._network_event_manager.response_extra_info(request_id).append(
+            event
+        )
 
     def forget_request(self, request: Request, events: bool) -> None:
         """
@@ -617,7 +611,7 @@ class ChromeNetworkManager(NetworkManager):
             if not isinstance(value, str):
                 raise ValueError(
                     f'Expected value of header "{key}"'
-                    f' to be str, not {type(value)}.'
+                    f" to be str, not {type(value)}."
                 )
         self._extra_http_headers.update(extra_http_headers)
         await self._apply_extra_http_headers()
@@ -632,8 +626,8 @@ class ChromeNetworkManager(NetworkManager):
             choice (bool): False to disable, True to enable.
         """
         self._user_request_interception_enabled = choice
-        enabled = (
-            self._user_request_interception_enabled or bool(self.credentials)
+        enabled = self._user_request_interception_enabled or bool(
+            self.credentials
         )
         if enabled == self._protocol_request_interception_enabled:
             return

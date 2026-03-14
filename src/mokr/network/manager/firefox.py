@@ -76,25 +76,26 @@ class FirefoxNetworkManager(NetworkManager):
     async def _on_request(self, event: dict) -> None:
         # Firefox request event never has a "redirectResponse", not handling.
         mokr_request_uuid = self._inspect_stack_for_mokr_uuid(event)
-        requestId = event['requestId']
+        requestId = event["requestId"]
         frame = (
-            self._frame_manager.frame(event['frameId'])
-            if event.get('frameId') else None
+            self._frame_manager.frame(event["frameId"])
+            if event.get("frameId")
+            else None
         )
         is_navigation_request = bool(
-            event.get('requestId') == event.get('loaderId')
-            and event.get('type') == 'Document'
+            event.get("requestId") == event.get("loaderId")
+            and event.get("type") == "Document"
         )
         request = Request(
             self._page,
             self._client,
-            event['requestId'],
+            event["requestId"],
             None,
             is_navigation_request,
             self._user_request_interception_enabled,
-            event.get('request', {}).get('url'),
-            event.get('type', ''),
-            event.get('request', {}),
+            event.get("request", {}).get("url"),
+            event.get("type", ""),
+            event.get("request", {}),
             frame,
             [],
             self._interception_callback_chain,
@@ -107,20 +108,20 @@ class FirefoxNetworkManager(NetworkManager):
 
     def _on_response_received(self, event: dict) -> None:
         # Firefox doesn't emit on extraInfo event ever so not handling.
-        request = self._request_id_to_request.get(event['requestId'])
+        request = self._request_id_to_request.get(event["requestId"])
         # FileUpload sends a response without a matching request.
         if not request:
             return
-        _response = event.get('response', {})
+        _response = event.get("response", {})
         response = Response(
             self._client,
             request,
-            _response.get('status', 0),
-            _response.get('headers', {}),
-            _response.get('fromDiskCache'),
-            _response.get('fromServiceWorker'),
+            _response.get("status", 0),
+            _response.get("headers", {}),
+            _response.get("fromDiskCache"),
+            _response.get("fromServiceWorker"),
             True,
-            _response.get('securityDetails'),
+            _response.get("securityDetails"),
             None,
         )
         request._response = response

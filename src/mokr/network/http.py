@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from mokr.browser.page import Page
 
 
-class HttpDomain():
+class HttpDomain:
     def __init__(
         self,
         page: Page,

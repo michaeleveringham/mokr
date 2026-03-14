@@ -5,7 +5,7 @@ from mokr.connection import DevtoolsConnection
 from mokr.constants import INPUT_INSERT_TEXT, INPUT_KEY, KEY_DEFINITIONS
 
 
-class Keyboard():
+class Keyboard:
     def __init__(self, client: DevtoolsConnection) -> None:
         """
         Class to allow sending key events to emulate a keyboard.
@@ -28,13 +28,13 @@ class Keyboard():
 
     @staticmethod
     def _modifier_bit(key: str) -> int:
-        if key == 'Alt':
+        if key == "Alt":
             return 1
-        if key == 'Control':
+        if key == "Control":
             return 2
-        if key == 'Meta':
+        if key == "Meta":
             return 4
-        if key == 'Shift':
+        if key == "Shift":
             return 8
         return 0
 
@@ -46,35 +46,35 @@ class Keyboard():
     def _key_description_from_string(self, keyString: str) -> dict:
         shift = self._modifiers & 8
         description = {
-            'key': '',
-            'keyCode': 0,
-            'code': '',
-            'text': '',
-            'location': 0,
+            "key": "",
+            "keyCode": 0,
+            "code": "",
+            "text": "",
+            "location": 0,
         }
         definition = KEY_DEFINITIONS.get(keyString)
         if not definition:
-            raise LookupError(f'Unknown key: {keyString}')
-        if 'key' in definition:
-            description['key'] = definition['key']
-        if shift and definition.get('shiftKey'):
-            description['key'] = definition['shiftKey']
-        if 'keyCode' in definition:
-            description['keyCode'] = definition['keyCode']
-        if shift and definition.get('shiftKeyCode'):
-            description['keyCode'] = definition['shiftKeyCode']
-        if 'code' in definition:
-            description['code'] = definition['code']
-        if 'location' in definition:
-            description['location'] = definition['location']
-        if len(description['key']) == 1:
-            description['text'] = description['key']
-        if 'text' in definition:
-            description['text'] = definition['text']
-        if shift and definition.get('shiftText'):
-            description['text'] = definition['shiftText']
+            raise LookupError(f"Unknown key: {keyString}")
+        if "key" in definition:
+            description["key"] = definition["key"]
+        if shift and definition.get("shiftKey"):
+            description["key"] = definition["shiftKey"]
+        if "keyCode" in definition:
+            description["keyCode"] = definition["keyCode"]
+        if shift and definition.get("shiftKeyCode"):
+            description["keyCode"] = definition["shiftKeyCode"]
+        if "code" in definition:
+            description["code"] = definition["code"]
+        if "location" in definition:
+            description["location"] = definition["location"]
+        if len(description["key"]) == 1:
+            description["text"] = description["key"]
+        if "text" in definition:
+            description["text"] = definition["text"]
+        if shift and definition.get("shiftText"):
+            description["text"] = definition["shiftText"]
         if self._modifiers & ~8:
-            description['text'] = ''
+            description["text"] = ""
         return description
 
     async def down(
@@ -96,25 +96,25 @@ class Keyboard():
                 sent, as well. Defaults to None.
         """
         description = self._key_description_from_string(key)
-        auto_repeat = description['code'] in self._pressed_keys
-        self._pressed_keys.add(description['code'])
-        self._modifiers |= self._modifier_bit(description['key'])
+        auto_repeat = description["code"] in self._pressed_keys
+        self._pressed_keys.add(description["code"])
+        self._modifiers |= self._modifier_bit(description["key"])
         if text is None:
-            text = description['text']
+            text = description["text"]
         await self._client.send(
             INPUT_KEY,
             {
-                'type': 'keyDown' if text else 'rawKeyDown',
-                'modifiers': self._modifiers,
-                'windowsVirtualKeyCode': description['keyCode'],
-                'code': description['code'],
-                'key': description['key'],
-                'text': text,
-                'unmodifiedText': text,
-                'autoRepeat': auto_repeat,
-                'location': description['location'],
-                'isKeypad': description['location'] == 3,
-            }
+                "type": "keyDown" if text else "rawKeyDown",
+                "modifiers": self._modifiers,
+                "windowsVirtualKeyCode": description["keyCode"],
+                "code": description["code"],
+                "key": description["key"],
+                "text": text,
+                "unmodifiedText": text,
+                "autoRepeat": auto_repeat,
+                "location": description["location"],
+                "isKeypad": description["location"] == 3,
+            },
         )
 
     async def up(self, key: str) -> None:
@@ -127,19 +127,19 @@ class Keyboard():
                 sent, as well. Defaults to None.
         """
         description = self._key_description_from_string(key)
-        self._modifiers &= ~self._modifier_bit(description['key'])
-        if description['code'] in self._pressed_keys:
-            self._pressed_keys.remove(description['code'])
+        self._modifiers &= ~self._modifier_bit(description["key"])
+        if description["code"] in self._pressed_keys:
+            self._pressed_keys.remove(description["code"])
         await self._client.send(
             INPUT_KEY,
             {
-                'type': 'keyUp',
-                'modifiers': self._modifiers,
-                'key': description['key'],
-                'windowsVirtualKeyCode': description['keyCode'],
-                'code': description['code'],
-                'location': description['location'],
-            }
+                "type": "keyUp",
+                "modifiers": self._modifiers,
+                "key": description["key"],
+                "windowsVirtualKeyCode": description["keyCode"],
+                "code": description["code"],
+                "location": description["location"],
+            },
         )
 
     async def send_character(self, char: str) -> None:
@@ -154,7 +154,7 @@ class Keyboard():
         Args:
             char (str): Character to send, does not accept special characters.
         """
-        await self._client.send(INPUT_INSERT_TEXT, {'text': char})
+        await self._client.send(INPUT_INSERT_TEXT, {"text": char})
 
     async def type_text(self, text: str, delay: int | float = 0) -> None:
         """

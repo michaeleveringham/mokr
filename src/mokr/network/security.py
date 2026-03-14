@@ -1,10 +1,9 @@
 import logging
 
-
 LOGGER = logging.getLogger(__name__)
 
 
-class SecurityDetails():
+class SecurityDetails:
     def __init__(
         self,
         subject_name: str,

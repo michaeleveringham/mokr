@@ -6,7 +6,7 @@ from mokr.constants import INPUT_MOUSE
 from mokr.input.keyboard import Keyboard
 
 
-class Mouse():
+class Mouse:
     def __init__(self, client: DevtoolsConnection, keyboard: Keyboard) -> None:
         """
         Class to emulate mouse movement.
@@ -23,7 +23,7 @@ class Mouse():
         self._keyboard = keyboard
         self._x = 0.0
         self._y = 0.0
-        self._button = 'none'
+        self._button = "none"
 
     async def move(
         self,
@@ -51,11 +51,11 @@ class Mouse():
             await self._client.send(
                 INPUT_MOUSE,
                 {
-                    'type': 'mouseMoved',
-                    'button': self._button,
-                    'x': x,
-                    'y': y,
-                    'modifiers': self._keyboard._modifiers,
+                    "type": "mouseMoved",
+                    "button": self._button,
+                    "x": x,
+                    "y": y,
+                    "modifiers": self._keyboard._modifiers,
                 },
             )
 
@@ -78,13 +78,13 @@ class Mouse():
         await self._client.send(
             INPUT_MOUSE,
             {
-                'type': 'mousePressed',
-                'button': self._button,
-                'x': self._x,
-                'y': self._y,
-                'modifiers': self._keyboard._modifiers,
-                'clickCount': click_count,
-            }
+                "type": "mousePressed",
+                "button": self._button,
+                "x": self._x,
+                "y": self._y,
+                "modifiers": self._keyboard._modifiers,
+                "clickCount": click_count,
+            },
         )
 
     async def up(
@@ -106,12 +106,12 @@ class Mouse():
         await self._client.send(
             INPUT_MOUSE,
             {
-                'type': 'mouseReleased',
-                'button': self._button,
-                'x': self._x,
-                'y': self._y,
-                'modifiers': self._keyboard._modifiers,
-                'clickCount': click_count,
+                "type": "mouseReleased",
+                "button": self._button,
+                "x": self._x,
+                "y": self._y,
+                "modifiers": self._keyboard._modifiers,
+                "clickCount": click_count,
             },
         )
 

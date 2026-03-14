@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 KINDS = Literal["page", "background_page", "service_worker", "browser", "other"]
 
 
-class Target():
+class Target:
     def __init__(
         self,
         browser: Browser,
@@ -63,7 +63,7 @@ class Target():
         self._browser = browser
         self._target_info = target_info
         self._browser_context = browser_context
-        self._targetId = target_info.get('targetId', '')
+        self._targetId = target_info.get("targetId", "")
         self._session_factory = session_factory
         self._ignore_https_errors = ignore_https_errors
         self._default_viewport = default_viewport
@@ -75,8 +75,8 @@ class Target():
         self._initialized_promise = self._loop.create_future()
         self._is_closed_promise = self._loop.create_future()
         self._is_initialized = (
-            self._target_info['type'] != 'page'
-            or self._target_info['url'] != ''
+            self._target_info["type"] != "page"
+            or self._target_info["url"] != ""
         )
         if self._is_initialized:
             self._initialized_callback(True)
@@ -84,7 +84,7 @@ class Target():
     @property
     def url(self) -> str:
         """Get url of this target."""
-        return self._target_info['url']
+        return self._target_info["url"]
 
     @property
     def kind(self) -> KINDS:
@@ -93,10 +93,10 @@ class Target():
         Type may be on of "page", "background_page", "service_worker",
         "browser", or "other".
         """
-        _type = self._target_info['type']
-        if _type in ['page', 'background_page', 'service_worker', 'browser']:
+        _type = self._target_info["type"]
+        if _type in ["page", "background_page", "service_worker", "browser"]:
             return _type
-        return 'other'
+        return "other"
 
     @property
     def browser(self) -> Browser:
@@ -114,7 +114,7 @@ class Target():
     @property
     def opener(self) -> Target | None:
         """The parent `Target` that spawned this, if any."""
-        opener_id = self._target_info.get('openerId')
+        opener_id = self._target_info.get("openerId")
         if opener_id is None:
             return None
         return self.browser._targets.get(opener_id)
@@ -122,8 +122,8 @@ class Target():
     def _target_info_changed(self, target_info: dict) -> None:
         self._target_info = target_info
         if not self._is_initialized and (
-            self._target_info['type'] != 'page'
-            or self._target_info['url'] != ''
+            self._target_info["type"] != "page"
+            or self._target_info["url"] != ""
         ):
             self._is_initialized = True
             self._initialized_callback(True)
@@ -156,7 +156,7 @@ class Target():
             Page | None: Associated `mokr.browser.Page`, if any.
         """
         if (
-            self._target_info['type'] in ['page', 'background_page']
+            self._target_info["type"] in ["page", "background_page"]
             and self._page is None
         ):
             client = await self._session_factory()
