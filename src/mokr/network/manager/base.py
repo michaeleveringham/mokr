@@ -12,7 +12,6 @@ from mokr.constants import (
     NETWORK_EXTRA_HEADERS,
     NETWORK_USER_AGENT_OVERRIDE,
     SECURITY_IGNORE_HTTPS_ERRORS,
-
 )
 from mokr.frame import FrameManager
 from mokr.execution.context import EVALUATION_SCRIPT_URL
@@ -41,8 +40,8 @@ class NetworkManager(EventEmitter):
         self._attempted_authentications = set()
         self._emulated_network_conditions = {}
         self.credentials = {}
-        self.user_agent = ''
-        self.user_agent_metadata = ''
+        self.user_agent = ""
+        self.user_agent_metadata = ""
         for event, method in self._events_to_methods.items():
             self._client.on(event, method)
 
@@ -53,7 +52,7 @@ class NetworkManager(EventEmitter):
         client: DevtoolsConnection,
         frame_manager: FrameManager,
         ignore_https_errors: bool,
-        interception_callback_chain: list[Callable]
+        interception_callback_chain: list[Callable],
     ) -> NetworkManager:
         """
         Async constructor for this class. Necessary to run some asyncronous
@@ -109,13 +108,13 @@ class NetworkManager(EventEmitter):
         await self._client.send(
             NETWORK_EMULATE_NETWORK_CONDITIONS,
             {
-                'offline': self._emulated_network_conditions['offline'],
-                'latency': self._emulated_network_conditions['latency'],
-                'uploadThroughput': self._emulated_network_conditions['upload'],
-                'downloadThroughput': (
-                    self._emulated_network_conditions['download']
+                "offline": self._emulated_network_conditions["offline"],
+                "latency": self._emulated_network_conditions["latency"],
+                "uploadThroughput": self._emulated_network_conditions["upload"],
+                "downloadThroughput": (
+                    self._emulated_network_conditions["download"]
                 ),
-            }
+            },
         )
 
     async def _apply_protocol_cache_disabled(self) -> None:
@@ -123,15 +122,15 @@ class NetworkManager(EventEmitter):
             return
         await self._client.send(
             NETWORK_CACHE_DISABLE,
-            {'cacheDisabled': self._user_cache_disabled},
+            {"cacheDisabled": self._user_cache_disabled},
         )
 
     async def _apply_user_agent(self) -> None:
         if not self.user_agent:
             return
-        params = {'userAgent': self.user_agent}
+        params = {"userAgent": self.user_agent}
         if self.user_agent_metadata:
-            params['userAgentMetadata'] = self.user_agent_metadata,
+            params["userAgentMetadata"] = (self.user_agent_metadata,)
         await self._client.send(NETWORK_USER_AGENT_OVERRIDE, params)
 
     def _inspect_stack_for_mokr_uuid(self, event: dict) -> str | None:
@@ -204,7 +203,7 @@ class NetworkManager(EventEmitter):
                 "download": -1,
                 "latency": 0,
             }
-        self._emulated_network_conditions['offline'] = choice
+        self._emulated_network_conditions["offline"] = choice
         await self._apply_network_conditions()
 
     async def set_request_cache(self, enabled: bool) -> None:

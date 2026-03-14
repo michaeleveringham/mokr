@@ -51,7 +51,7 @@ class DevtoolsConnection(EventEmitter, RemoteConnection):
 
     def _on_successful_response(self, callback: Future, msg: dict) -> None:
         if callback and not callback.done():
-            callback.set_result(msg.get('result'))
+            callback.set_result(msg.get("result"))
 
     def _on_query(self, msg: dict) -> None:
         _, method, params = self._handle_detached_or_received(msg)
@@ -59,12 +59,27 @@ class DevtoolsConnection(EventEmitter, RemoteConnection):
 
     def _on_closed(self) -> None:
         for cb in self._callbacks.values():
-            cb.set_exception(self._rewrite_exception(
-                cb.error,
-                f'Protocol error {cb.method}: Target closed.',
-            ))
+            cb.set_exception(
+                self._rewrite_exception(
+                    cb.error,
+                    f"Protocol error {cb.method}: Target closed.",
+                )
+            )
         self._callbacks.clear()
         self._connection = None
+
+    def _handle_send_future(self, future: Future) -> None:
+        """
+        Handle a completed send future to suppress "Future exception was never
+        retrieved" warnings for expected errors like "Target closed".
+        """
+        try:
+            future.result()
+        except Exception as e:
+            error_msg = str(e)
+            # "Target closed" errors are expected when closing, so just ignore them
+            if "Target closed" not in error_msg:
+                LOGGER.debug(f"Send future error: {error_msg}")
 
     def _create_session(
         self,
@@ -92,8 +107,8 @@ class DevtoolsConnection(EventEmitter, RemoteConnection):
         """
         if not self._connection:
             raise NetworkError(
-                f'Protocol Error ({method}): Session closed. Most likely the'
-                f' {self._target_type} has been closed.'
+                f"Protocol Error ({method}): Session closed. Most likely the"
+                f" {self._target_type} has been closed."
             )
         msg = self._prepare_message(method, params)
         callback = self._loop.create_future()
@@ -101,13 +116,16 @@ class DevtoolsConnection(EventEmitter, RemoteConnection):
         callback.error = NetworkError()
         callback.method = method
         try:
-            self._connection.send(
+            send_future = self._connection.send(
                 TARGET_SEND_MSG,
                 {
-                    'sessionId': self._sessionId,
-                    'message': msg,
-                }
+                    "sessionId": self._sessionId,
+                    "message": msg,
+                },
             )
+            # Ensure the send future's exception is handled to avoid
+            # "Future exception was never retrieved" warnings
+            send_future.add_done_callback(self._handle_send_future)
         except Exception as e:
             # The response from target may have already been dispatched.
             if self._last_id in self._callbacks:
@@ -129,8 +147,8 @@ class DevtoolsConnection(EventEmitter, RemoteConnection):
             NetworkError: Raised if remote connection is already closed.
         """
         if not self._connection:
-            raise NetworkError('Connection already closed.')
+            raise NetworkError("Connection already closed.")
         await self._connection.send(
             TARGET_SEND_DETACH,
-            {'sessionId': self._sessionId},
+            {"sessionId": self._sessionId},
         )

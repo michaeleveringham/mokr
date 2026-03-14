@@ -15,13 +15,13 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-class WaitTask():
+class WaitTask:
     def __init__(
         self,
         frame: Frame,
         predicate_body: str,
         title: str,
-        polling: Literal['raf', 'mutation'] | int | float,
+        polling: Literal["raf", "mutation"] | int | float,
         timeout: float,
         loop: asyncio.AbstractEventLoop,
         *args: Any,
@@ -47,7 +47,7 @@ class WaitTask():
         """
         polling_value_error = False
         if isinstance(polling, str):
-            if polling not in ['raf', 'mutation']:
+            if polling not in ["raf", "mutation"]:
                 polling_value_error = True
         elif isinstance(polling, (int, float)):
             if polling <= 0:
@@ -69,9 +69,9 @@ class WaitTask():
         self._terminated = False
         self._timeout_error = False
         if args or is_javascript_method(predicate_body):
-            self._predicate_body = f'return ({predicate_body})(...args)'
+            self._predicate_body = f"return ({predicate_body})(...args)"
         else:
-            self._predicate_body = f'return {predicate_body}'
+            self._predicate_body = f"return {predicate_body}"
         frame._wait_tasks.add(self)
         self.promise = self._loop.create_future()
         if timeout:
@@ -96,7 +96,7 @@ class WaitTask():
         self._timeout_error = True
         self.terminate(
             MokrTimeoutError(
-                f'Waiting for {title} failed: timeout {timeout}ms exceeds.'
+                f"Waiting for {title} failed: timeout {timeout}ms exceeds."
             )
         )
 
@@ -128,7 +128,7 @@ class WaitTask():
         try:
             context = await self._frame.execution_context()
             if context is None:
-                raise PageError('No execution context attached to frame.')
+                raise PageError("No execution context attached to frame.")
             success = await context.evaluate_handle(
                 METHOD_WAIT_FOR_PREDICATE_PAGE,
                 self._predicate_body,
@@ -146,8 +146,10 @@ class WaitTask():
             return
         # Add try/except referring to puppeteer.
         try:
-            if not error and success and (
-                await self._frame.evaluate('s => !s', success)
+            if (
+                not error
+                and success
+                and (await self._frame.evaluate("s => !s", success))
             ):
                 await success.dispose()
                 return
@@ -158,9 +160,10 @@ class WaitTask():
         # Page is navigated and context is destroyed.
         # Try again in the new execution context.
         if isinstance(error, NetworkError) and any(
-            error_part in error.args[0] for error_part in [
-                'Execution context was destroyed',
-                'Cannot find context with specified id',
+            error_part in error.args[0]
+            for error_part in [
+                "Execution context was destroyed",
+                "Cannot find context with specified id",
             ]
         ):
             return

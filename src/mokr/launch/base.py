@@ -16,7 +16,6 @@ from mokr.utils import (
     remove_event_listeners,
 )
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -111,21 +110,22 @@ class Launcher(ABC):
             ```
         """
         self.port = self._get_free_port()
-        self.url = f'http://127.0.0.1:{self.port}'
+        self.url = f"http://127.0.0.1:{self.port}"
         self._loop = loop if loop else asyncio.get_event_loop()
         self.dumpio = dumpio
         self.env = env
         self.ignore_https_errors = ignore_https_errors
         self.default_viewport = (
-            default_viewport if default_viewport
-            else {'width': 800, 'height': 600}
+            default_viewport
+            if default_viewport
+            else {"width": 800, "height": 600}
         )
         self.default_user_agent = default_user_agent
         self.slow_mo = slow_mo
         self.firefox_user_prefs = firefox_user_prefs
         self.firefox_addons_paths = firefox_addons_paths
         if log_level is not None:
-            logging.getLogger('mokr').setLevel(log_level)
+            logging.getLogger("mokr").setLevel(log_level)
         self.browser_closed = True
         self.browser_arguments: list[str] = list()
         args = args if args else []
@@ -171,7 +171,7 @@ class Launcher(ABC):
         )
         browser_arguments.extend(args)
         if all(arg.startswith("-") for arg in args):
-            browser_arguments.append('about:blank')
+            browser_arguments.append("about:blank")
         return browser_arguments
 
     def _compute_launch_args(
@@ -191,7 +191,7 @@ class Launcher(ABC):
             self.browser_arguments.extend(
                 filter(
                     lambda arg: arg not in ignore_default_args,
-                    self._default_args(headless, args, user_data_dir, devtools)
+                    self._default_args(headless, args, user_data_dir, devtools),
                 )
             )
         else:
@@ -202,9 +202,9 @@ class Launcher(ABC):
         install_error = (
             f"Failed to find browser binary at {binary}\n"
             f'\n\t{"*" * 53}'
-            "\n\t* Please install binary via \"mokr install\" or       *"
-            "\n\t* specify the target binary path via \"binary_path\"  *"
-            "\n\t* in the \"launch\" command.                          *"
+            '\n\t* Please install binary via "mokr install" or       *'
+            '\n\t* specify the target binary path via "binary_path"  *'
+            '\n\t* in the "launch" command.                          *'
             "\n\t*                                       >>>✈        *"
             f'\n\t{"*" * 53}'
         )
@@ -215,7 +215,7 @@ class Launcher(ABC):
 
     def _get_free_port(self) -> int:
         sock = socket.socket()
-        sock.bind(('localhost', 0))
+        sock.bind(("localhost", 0))
         port = sock.getsockname()[1]
         sock.close()
         del sock
@@ -231,7 +231,7 @@ class Launcher(ABC):
         self.initial_page_promise.set_result(True)
 
     def _check_target(self, target: Target) -> None:
-        if target.kind == 'page':
+        if target.kind == "page":
             self._initial_page_callback()
 
     async def launch(self) -> Browser:
@@ -239,13 +239,13 @@ class Launcher(ABC):
         self.browser_closed = False
         self.connection = None
         options = {}
-        options['env'] = self.env
+        options["env"] = self.env
         if not self.dumpio:
-            options['stdout'] = subprocess.DEVNULL
-            options['stderr'] = subprocess.STDOUT
+            options["stdout"] = subprocess.DEVNULL
+            options["stderr"] = subprocess.STDOUT
         self.proc = subprocess.Popen(self.cmd, **options)
         self.browser_ws_endpoint = get_ws_endpoint(self.url)
-        LOGGER.info(f'Browser listening on: {self.browser_ws_endpoint}')
+        LOGGER.info(f"Browser listening on: {self.browser_ws_endpoint}")
         self.connection = Connection(
             self.browser_ws_endpoint,
             self._loop,
@@ -284,17 +284,17 @@ class Launcher(ABC):
             browser (Browser): Target `mokr.browser.Browser`.
         """
         for target in browser.targets():
-            if target.kind == 'page':
+            if target.kind == "page":
                 return
         listeners = [
-            add_event_listener(browser, 'targetcreated', self._check_target)
+            add_event_listener(browser, "targetcreated", self._check_target)
         ]
         await self.initial_page_promise
         remove_event_listeners(listeners)
 
     async def kill_browser(self) -> None:
         """Kill running browser process."""
-        LOGGER.info('Killing browser process...')
+        LOGGER.info("Killing browser process...")
         if self.connection and self.connection._connected:
             try:
                 await self.connection.send(BROWSER_CLOSE)

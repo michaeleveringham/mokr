@@ -3,7 +3,7 @@ from mokr.constants import INPUT_TOUCH
 from mokr.input.keyboard import Keyboard
 
 
-class Touchscreen():
+class Touchscreen:
     def __init__(
         self,
         client: DevtoolsConnection,
@@ -28,20 +28,20 @@ class Touchscreen():
             x (float): X coordinate to move to.
             y (float): Y coordinate to move to.
         """
-        touch_points = [{'x': round(x), 'y': round(y)}]
+        touch_points = [{"x": round(x), "y": round(y)}]
         await self._client.send(
             INPUT_TOUCH,
             {
-                'type': 'touchStart',
-                'touchPoints': touch_points,
-                'modifiers': self._keyboard._modifiers,
+                "type": "touchStart",
+                "touchPoints": touch_points,
+                "modifiers": self._keyboard._modifiers,
             },
         )
         await self._client.send(
             INPUT_TOUCH,
             {
-                'type': 'touchEnd',
-                'touchPoints': [],
-                'modifiers': self._keyboard._modifiers,
+                "type": "touchEnd",
+                "touchPoints": [],
+                "modifiers": self._keyboard._modifiers,
             },
         )

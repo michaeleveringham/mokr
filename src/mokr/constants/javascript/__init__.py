@@ -2,10 +2,9 @@ from pathlib import Path
 
 from mokr.constants import javascript
 
-
 root = Path(javascript.__file__).parent
 
-METHOD_FOCUS_ELEMENT = 'element => element.focus()'
+METHOD_FOCUS_ELEMENT = "element => element.focus()"
 
 METHOD_GET_PROPERTY = (root / "get_property.js").read_text()
 METHOD_SCROLL_INTO_VIEW = (root / "scroll_into_view.js").read_text()

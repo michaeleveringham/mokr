@@ -4,7 +4,7 @@ from mokr.connection.connection import DevtoolsConnection
 from mokr.constants import EMULATION_ENABLE_TOUCH, EMULATION_OVERRIDE_METRICS
 
 
-class ViewportManager():
+class ViewportManager:
     def __init__(self, client: DevtoolsConnection) -> None:
         """
         Handler for adjusting the browser viewport. Can adjust size and
@@ -37,36 +37,36 @@ class ViewportManager():
                 the changes sent. False if not.
         """
         options = {}
-        mobile = viewport.get('isMobile', False)
-        options['mobile'] = mobile
+        mobile = viewport.get("isMobile", False)
+        options["mobile"] = mobile
         for viewport_axis in ("width", "height"):
             axis_value = viewport.get(viewport_axis)
             if axis_value:
                 if not isinstance(axis_value, int) or axis_value < 0:
                     raise TypeError(
-                        'Viewport dimensions must be positive integers'
-                        f', got: {axis_value} ({type(axis_value)})'
+                        "Viewport dimensions must be positive integers"
+                        f", got: {axis_value} ({type(axis_value)})"
                     )
                 options[viewport_axis] = axis_value
-        options['deviceScaleFactor'] = viewport.get('deviceScaleFactor', 1)
-        if viewport.get('isLandscape'):
-            options['screenOrientation'] = {
-                'angle': 90,
-                'type': 'landscapePrimary',
+        options["deviceScaleFactor"] = viewport.get("deviceScaleFactor", 1)
+        if viewport.get("isLandscape"):
+            options["screenOrientation"] = {
+                "angle": 90,
+                "type": "landscapePrimary",
             }
         else:
-            options['screenOrientation'] = {
-                'angle': 0,
-                'type': 'portraitPrimary',
+            options["screenOrientation"] = {
+                "angle": 0,
+                "type": "portraitPrimary",
             }
-        has_touch = viewport.get('hasTouch', False)
+        has_touch = viewport.get("hasTouch", False)
         await self._client.send(EMULATION_OVERRIDE_METRICS, options)
         await self._client.send(
             EMULATION_ENABLE_TOUCH,
             {
-                'enabled': has_touch,
-                'configuration': 'mobile' if mobile else 'desktop',
-            }
+                "enabled": has_touch,
+                "configuration": "mobile" if mobile else "desktop",
+            },
         )
         reload_needed = (
             self._emulating_mobile != mobile or self._has_touch != has_touch

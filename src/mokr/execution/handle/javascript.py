@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-class JavascriptHandle():
+class JavascriptHandle:
     def __init__(
         self,
         context: ExecutionContext,
@@ -82,16 +82,16 @@ class JavascriptHandle():
         response = await self._client.send(
             RUNTIME_GET_PROPERTIES,
             {
-                'objectId': self._remote_object.get('objectId', ''),
-                'ownProperties': True,
-            }
+                "objectId": self._remote_object.get("objectId", ""),
+                "ownProperties": True,
+            },
         )
         result = {}
-        for prop in response['result']:
-            if not prop.get('enumerable'):
+        for prop in response["result"]:
+            if not prop.get("enumerable"):
                 continue
-            result[prop.get('name')] = self._context._object_handle_factory(
-                prop.get('value')
+            result[prop.get("name")] = self._context._object_handle_factory(
+                prop.get("value")
             )
         return result
 
@@ -102,18 +102,18 @@ class JavascriptHandle():
         Returns:
             dict: Dictionary of JSONified values.
         """
-        object_id = self._remote_object.get('objectId')
+        object_id = self._remote_object.get("objectId")
         if object_id:
             response = await self._client.send(
                 RUNTIME_CALL_FUNCTION,
                 {
-                    'functionDeclaration': 'function() { return this; }',
-                    'objectId': object_id,
-                    'returnByValue': True,
-                    'awaitPromise': True,
-                }
+                    "functionDeclaration": "function() { return this; }",
+                    "objectId": object_id,
+                    "returnByValue": True,
+                    "awaitPromise": True,
+                },
             )
-            return serialize_remote_object(response['result'])
+            return serialize_remote_object(response["result"])
         return serialize_remote_object(self._remote_object)
 
     async def dispose(self) -> None:
@@ -140,12 +140,11 @@ class JavascriptHandle():
             str: String representation of remote object. May contain
                 object data or just the type.
         """
-        if self._remote_object.get('objectId'):
-            _type = (
-                self._remote_object.get('subtype')
-                or self._remote_object.get('type')
-            )
-            return f'JavascriptHandle@{_type}'
-        return 'JavascriptHandle:{}'.format(
+        if self._remote_object.get("objectId"):
+            _type = self._remote_object.get(
+                "subtype"
+            ) or self._remote_object.get("type")
+            return f"JavascriptHandle@{_type}"
+        return "JavascriptHandle:{}".format(
             serialize_remote_object(self._remote_object)
         )

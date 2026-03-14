@@ -7,7 +7,6 @@ from urllib.request import urlopen
 
 from mokr.exceptions import BrowserError
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -24,11 +23,11 @@ def get_ws_endpoint(url) -> str:
     Returns:
         str: Websocket URL from `<url>/json/version` response.
     """
-    url = url + '/json/version'
+    url = url + "/json/version"
     timeout = time.time() + 30
     while True:
         if time.time() > timeout:
-            raise BrowserError('Browser closed unexpectedly:\n')
+            raise BrowserError("Browser closed unexpectedly:\n")
         try:
             with urlopen(url) as f:
                 data = json.loads(f.read().decode())
@@ -36,4 +35,4 @@ def get_ws_endpoint(url) -> str:
         except (URLError, HTTPException):
             pass
         time.sleep(0.1)
-    return data['webSocketDebuggerUrl']
+    return data["webSocketDebuggerUrl"]

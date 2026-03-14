@@ -8,39 +8,38 @@ from urllib.parse import urlparse
 from mokr.constants import INSTALL_PATH
 from mokr.launch.base import Launcher
 
-
-CHROME_PROFILE_PATH = INSTALL_PATH / '.dev_profile'
+CHROME_PROFILE_PATH = INSTALL_PATH / ".dev_profile"
 
 DEFAULT_CHROME_ARGS = [
-    '--allow-pre-commit-input',
-    '--disable-background-networking',
-    '--disable-background-timer-throttling',
-    '--disable-background-occluded-windows',
-    '--disable-breakpad',
-    '--disable-client-side-phishing-detection',
-    '--disable-component-extensions-with-background-pages',
-    '--disable-component-update',
-    '--disable-default-apps',
-    '--disable-dev-shm-usage',
-    '--disable-extensions',
-    '--disable-field-trial-config',
-    '--disable-infobars',
-    '--disable-ipc-flooding-protection',
-    '--disable-popup-blocking',
-    '--disable-prompt-on-repost',
-    '--disable-renderer-backgrounding',
-    '--disable-search-engine-choice-screen',
-    '--disable-sync',
-    '--enable-automation',
-    '--export-tagged-pdf',
-    '--generate-pdf-document-outline',
-    '--force-color-profile=srgb',
-    '--metrics-recording-only',
-    '--no-first-run',
-    '--password-store=basic',
-    '--use-mock-keychain',
-    '--enable-features=NetworkServiceInProcess2',
-    '--disable-features=Translate,AcceptCHFrame,MediaRouter,OptimizationHints,ProcessPerSiteUpToMainFrameThreshold',  # noqa
+    "--allow-pre-commit-input",
+    "--disable-background-networking",
+    "--disable-background-timer-throttling",
+    "--disable-background-occluded-windows",
+    "--disable-breakpad",
+    "--disable-client-side-phishing-detection",
+    "--disable-component-extensions-with-background-pages",
+    "--disable-component-update",
+    "--disable-default-apps",
+    "--disable-dev-shm-usage",
+    "--disable-extensions",
+    "--disable-field-trial-config",
+    "--disable-infobars",
+    "--disable-ipc-flooding-protection",
+    "--disable-popup-blocking",
+    "--disable-prompt-on-repost",
+    "--disable-renderer-backgrounding",
+    "--disable-search-engine-choice-screen",
+    "--disable-sync",
+    "--enable-automation",
+    "--export-tagged-pdf",
+    "--generate-pdf-document-outline",
+    "--force-color-profile=srgb",
+    "--metrics-recording-only",
+    "--no-first-run",
+    "--password-store=basic",
+    "--use-mock-keychain",
+    "--enable-features=NetworkServiceInProcess2",
+    "--disable-features=Translate,AcceptCHFrame,MediaRouter,OptimizationHints,ProcessPerSiteUpToMainFrameThreshold",  # noqa
     # '--disable-browser-side-navigation',
     # '--safebrowsing-disable-auto-update',
     # '--disable-hang-monitor',
@@ -58,12 +57,12 @@ class ChromeLauncher(Launcher):
         port = proxy_parts.port
         if proxy.startswith("socks"):
             args = [
-                f'--proxy-server={proxy}',
+                f"--proxy-server={proxy}",
                 f'--host-resolver-rules="MAP * ~NOTFOUND , EXCLUDE {host}"',
             ]
         else:
             proxy = f"{scheme}://{host}:{port}"
-            args = [f'--proxy-server={proxy}']
+            args = [f"--proxy-server={proxy}"]
         self.browser_arguments.extend(args)
         credentials = {}
         credentials["proxy"] = proxy
@@ -81,12 +80,12 @@ class ChromeLauncher(Launcher):
     ):
         browser_arguments = copy(DEFAULT_CHROME_ARGS)
         if user_data_dir:
-            browser_arguments.append(f'--user-data-dir={user_data_dir}')
+            browser_arguments.append(f"--user-data-dir={user_data_dir}")
         if devtools:
-            browser_arguments.append('--auto-open-devtools-for-tabs')
+            browser_arguments.append("--auto-open-devtools-for-tabs")
         if headless:
             browser_arguments.extend(
-                ('--headless=new', '--hide-scrollbars', '--mute-audio')
+                ("--headless=new", "--hide-scrollbars", "--mute-audio")
             )
 
         return browser_arguments
@@ -111,15 +110,17 @@ class ChromeLauncher(Launcher):
         self.proxy_credentials = self._parse_proxy(proxy) if proxy else None
         self.temp_user_data_dir = None
         if not any(
-            arg for arg in self.browser_arguments
-            if arg.startswith('--remote-debugging-')
+            arg
+            for arg in self.browser_arguments
+            if arg.startswith("--remote-debugging-")
         ):
             self.browser_arguments.append(
-                f'--remote-debugging-port={self.port}'
+                f"--remote-debugging-port={self.port}"
             )
         if not any(
-            arg for arg in self.browser_arguments
-            if arg.startswith('--user-data-dir')
+            arg
+            for arg in self.browser_arguments
+            if arg.startswith("--user-data-dir")
         ):
             if not CHROME_PROFILE_PATH.exists():
                 CHROME_PROFILE_PATH.mkdir(parents=True)
@@ -127,7 +128,7 @@ class ChromeLauncher(Launcher):
                 dir=str(CHROME_PROFILE_PATH)
             )
             self.browser_arguments.append(
-                f'--user-data-dir={self.temp_user_data_dir}'
+                f"--user-data-dir={self.temp_user_data_dir}"
             )
 
     def _clean_restore_data_dirs(self) -> None:
@@ -142,6 +143,6 @@ class ChromeLauncher(Launcher):
                 return
         else:
             raise IOError(
-                'Unable to remove temporary user data dir'
-                f' at {self.temp_user_data_dir}'
+                "Unable to remove temporary user data dir"
+                f" at {self.temp_user_data_dir}"
             )

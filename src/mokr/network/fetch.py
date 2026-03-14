@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 class _FirefoxResponseReady(Exception):
     """Used to cancel timeout and transfer response data."""
+
     def __init__(self, data: dict) -> None:
         self.data = data
 
@@ -106,7 +107,7 @@ class FetchDomain(EventEmitter):
         frame = self._page._ensure_frame()
         context = await frame.execution_context()
         if not context:
-            raise PageError('No context attached to frame.')
+            raise PageError("No context attached to frame.")
         try:
             return await context.evaluate_handle(
                 page_function,
@@ -147,8 +148,8 @@ class FetchDomain(EventEmitter):
 
     def _select_response_chrome(self, request_uuid: str) -> Response:
         responses = {
-            request_id: response for request_id, response in
-            self._request_id_to_response.items()
+            request_id: response
+            for request_id, response in self._request_id_to_response.items()
             if response and response._request._mokr_request_uuid == request_uuid
         }
         # This should never happen.
@@ -304,7 +305,8 @@ class FetchDomain(EventEmitter):
         elif not url:
             raise ValueError("Must provide URL or request.")
         params = {
-            name: value for name, value in {
+            name: value
+            for name, value in {
                 "body": body,
                 "browsingTopics": browsing_topics,
                 "cache": cache,
@@ -316,7 +318,8 @@ class FetchDomain(EventEmitter):
                 "redirect": redirect,
                 "referrer": referrer,
                 "referrerPolicy": referrer_policy,
-            }.items() if value is not None
+            }.items()
+            if value is not None
         }
         waiter = EventWaiter(
             self,

@@ -12,7 +12,6 @@ from mokr.connection.devtools import DevtoolsConnection
 from mokr.constants import TARGET_ATTACH
 from mokr.exceptions import NetworkError
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -66,11 +65,12 @@ class Connection(EventEmitter, RemoteConnection):
                     if resp:
                         await self._handle_response(resp)
                 except (websockets.ConnectionClosed, ConnectionResetError):
-                    LOGGER.info('Connection closed.')
+                    LOGGER.info("Connection closed.")
                     break
                 await asyncio.sleep(0)
         if self._connected:
-            self._loop.create_task(self.dispose())
+            dispose_task = self._loop.create_task(self.dispose())
+            dispose_task.add_done_callback(self._handle_dispose_task)
 
     async def _handle_response(self, response: str) -> None:
         await asyncio.sleep(self._delay)
@@ -82,14 +82,14 @@ class Connection(EventEmitter, RemoteConnection):
         try:
             await self.connection.send(msg)
         except websockets.ConnectionClosed:
-            LOGGER.warning('Connection closed unexpectedly.')
+            LOGGER.warning("Connection closed unexpectedly.")
             callback = self._callbacks.get(callback_id, None)
             if callback and not callback.done():
                 callback.set_result(None)
                 await self.dispose()
 
     def _on_successful_response(self, callback: Future, msg: dict) -> None:
-        callback.set_result(msg.get('result'))
+        callback.set_result(msg.get("result"))
 
     def _on_query(self, msg: dict) -> None:
         result, method, params = self._handle_detached_or_received(msg)
@@ -104,20 +104,43 @@ class Connection(EventEmitter, RemoteConnection):
             callback.set_exception(
                 self._rewrite_exception(
                     callback.error,
-                    f'Protocol error {callback.method}: Target closed.',
+                    f"Protocol error {callback.method}: Target closed.",
                 )
             )
         self._callbacks.clear()
         for session in self._sessions.values():
             session._on_closed()
         self._sessions.clear()
-        if hasattr(self, 'connection'):
+        if hasattr(self, "connection"):
             await self.connection.close()
         if not self._recv_fut.done():
             self._recv_fut.cancel()
 
     def _set_closed_callback(self, callback: Callable) -> None:
         self._close_callback = callback
+
+    def _handle_send_task(self, task) -> None:
+        """
+        Handle completion of an async send task to suppress "Future exception
+        was never retrieved" warnings for expected errors like connection closes.
+        """
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            pass
+        except websockets.ConnectionClosed:
+            LOGGER.debug("Connection closed during send.")
+        except Exception as e:
+            LOGGER.debug(f"Send task error: {e}")
+
+    def _handle_dispose_task(self, task) -> None:
+        """Handle completion of the dispose task."""
+        try:
+            task.result()
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            LOGGER.debug(f"Dispose task error: {e}")
 
     def send(self, method: str, params: dict = None) -> Awaitable[dict]:
         """
@@ -136,9 +159,11 @@ class Connection(EventEmitter, RemoteConnection):
         """
         # Detect connection availability from the second transmission.
         if self._last_id and not self._connected:
-            raise ConnectionError('Connection is closed.')
+            raise ConnectionError("Connection is closed.")
         msg = self._prepare_message(method, params)
-        self._loop.create_task(self._async_send(msg, self._last_id))
+        send_task = self._loop.create_task(self._async_send(msg, self._last_id))
+        # Attach a done callback to handle any unhandled exceptions
+        send_task.add_done_callback(self._handle_send_task)
         callback = self._loop.create_future()
         self._callbacks[self._last_id] = callback
         callback.error = NetworkError()
@@ -161,13 +186,12 @@ class Connection(EventEmitter, RemoteConnection):
             DevtoolsConnection: New `DevtoolsConnection`.
         """
         resp = await self.send(
-            TARGET_ATTACH,
-            {'targetId': target_info['targetId']}
+            TARGET_ATTACH, {"targetId": target_info["targetId"]}
         )
-        session_id = resp.get('sessionId')
+        session_id = resp.get("sessionId")
         session = DevtoolsConnection(
             self,
-            target_info['type'],
+            target_info["type"],
             session_id,
             self._loop,
         )

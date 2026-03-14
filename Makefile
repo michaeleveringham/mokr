@@ -1,8 +1,8 @@
 lint:
-	poetry run flake8 src/
+	uv run black src/
 
 test:
-	poetry run pytest tests/
+	uv run pytest tests/
 
 html:
-	poetry run sphinx-build -M html docs _html
+	uv run sphinx-build -M html docs _html

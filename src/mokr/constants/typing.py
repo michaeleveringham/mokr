@@ -1,6 +1,5 @@
 from typing import Literal
 
-
 LIFECYCLE_EVENTS = Literal[
     "load",
     "domcontentloaded",

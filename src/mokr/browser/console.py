@@ -1,12 +1,9 @@
 from mokr.execution import JavascriptHandle
 
 
-class ConsoleMessage():
+class ConsoleMessage:
     def __init__(
-        self,
-        kind: str,
-        text: str,
-        args: list[JavascriptHandle] = None
+        self, kind: str, text: str, args: list[JavascriptHandle] = None
     ) -> None:
         """
         Representation of console messages, dispatched on `console` event in

@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 
-class Response():
+class Response:
     def __init__(
         self,
         client: DevtoolsConnection,
@@ -82,11 +82,11 @@ class Response():
         self._security_details: dict | SecurityDetails = {}
         if security_details:
             self._security_details = SecurityDetails(
-                security_details['subjectName'],
-                security_details['issuer'],
-                security_details['validFrom'],
-                security_details['validTo'],
-                security_details['protocol'],
+                security_details["subjectName"],
+                security_details["issuer"],
+                security_details["validFrom"],
+                security_details["validTo"],
+                security_details["protocol"],
             )
         self._httpx_response = httpx_response
         # Overridden via Firefox fetch.
@@ -99,7 +99,7 @@ class Response():
     def _parse_extra_info_status_text(extra_info: dict = None) -> str | None:
         if not extra_info or not extra_info.get("headersText"):
             return
-        first_line = extra_info["headersText"].split('\r')[0]
+        first_line = extra_info["headersText"].split("\r")[0]
         if not first_line:
             return
         match = re.match(r"/[^ ]* [^ ]* (.*)/", first_line)
@@ -182,23 +182,23 @@ class Response():
         try:
             response = await self._client.send(
                 NETWORK_GET_RESPONSE_BODY,
-                {'requestId': self._request._request_id},
+                {"requestId": self._request._request_id},
             )
         except Exception as e:
             # Redirects have no body.
             if "No data found for resource with given identifier" in str(e):
                 pass
-            elif 'No resource with given identifier found' in str(e):
+            elif "No resource with given identifier found" in str(e):
                 raise type(e)(
-                    'Could not load response body, request may be preflight.'
+                    "Could not load response body, request may be preflight."
                 )
             else:
                 raise e
         if not response:
-            body = b''
+            body = b""
         else:
-            body = response.get('body', b'')
-            if response.get('base64Encoded'):
+            body = response.get("body", b"")
+            if response.get("base64Encoded"):
                 return base64.b64decode(body)
         return body
 
@@ -253,7 +253,7 @@ class Response():
             return content
         else:
             try:
-                return content.decode('utf-8')
+                return content.decode("utf-8")
             except UnicodeDecodeError:
                 return content
 

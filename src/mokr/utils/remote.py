@@ -8,7 +8,6 @@ from mokr.connection import DevtoolsConnection
 from mokr.constants import RUNTIME_RELEASE_OBJECT
 from mokr.exceptions import ElementHandleError
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -23,20 +22,20 @@ def format_javascript_exception(exception_details: dict) -> str:
     Returns:
         str: Formatted exception as string.
     """
-    exception = exception_details.get('exception')
+    exception = exception_details.get("exception")
     if exception:
-        return exception.get('description') or exception.get('value')
-    message = exception_details.get('text', '')
-    stackTrace = exception_details.get('stackTrace', dict())
+        return exception.get("description") or exception.get("value")
+    message = exception_details.get("text", "")
+    stackTrace = exception_details.get("stackTrace", dict())
     if stackTrace:
-        for callframe in stackTrace.get('callFrames'):
+        for callframe in stackTrace.get("callFrames"):
             location = (
                 f"{callframe.get('url', '')}:"
                 f"{callframe.get('lineNumber', '')}:"
                 f"{callframe.get('columnNumber')}"
             )
-            functionName = callframe.get('functionName', '<anonymous>')
-            message = message + f'\n    at {functionName} ({location})'
+            functionName = callframe.get("functionName", "<anonymous>")
+            message = message + f"\n    at {functionName} ({location})"
     return message
 
 
@@ -57,7 +56,7 @@ def add_event_listener(
         dict[str, Any]: A dictionary representation of the listener.
     """
     emitter.on(event_name, handler)
-    return {'emitter': emitter, 'eventName': event_name, 'handler': handler}
+    return {"emitter": emitter, "eventName": event_name, "handler": handler}
 
 
 def remove_event_listeners(listeners: list[dict]) -> None:
@@ -69,9 +68,9 @@ def remove_event_listeners(listeners: list[dict]) -> None:
             returned by `mokr.utils.remote.add_event_listener`.
     """
     for listener in listeners:
-        emitter = listener['emitter']
-        event_name = listener['eventName']
-        handler = listener['handler']
+        emitter = listener["emitter"]
+        event_name = listener["eventName"]
+        handler = listener["handler"]
         if event_name in emitter._events.keys():
             try:
                 emitter.remove_listener(event_name, handler)
@@ -99,26 +98,25 @@ def serialize_remote_object(remote_object: dict) -> Any:
             transformed into equivalents including "Nan" to None, "-0" to 0,
             "Infinity" to `math.inf`, and "-Infinity" to `-math.inf`.
     """
-    if remote_object.get('objectId'):
-        raise ElementHandleError('Cannot extract value when objectId is given.')
-    value = remote_object.get('unserializableValue')
+    if remote_object.get("objectId"):
+        raise ElementHandleError("Cannot extract value when objectId is given.")
+    value = remote_object.get("unserializableValue")
     if value:
-        if value == '-0':
+        if value == "-0":
             return -0
-        elif value == 'NaN':
+        elif value == "NaN":
             return None
-        elif value == 'Infinity':
+        elif value == "Infinity":
             return math.inf
-        elif value == '-Infinity':
+        elif value == "-Infinity":
             return -math.inf
         else:
-            raise ElementHandleError(f'Unserializable value: {value}')
-    return remote_object.get('value')
+            raise ElementHandleError(f"Unserializable value: {value}")
+    return remote_object.get("value")
 
 
 def release_remote_object(
-    client: DevtoolsConnection,
-    remote_object: dict
+    client: DevtoolsConnection, remote_object: dict
 ) -> Awaitable:
     """
     Release a given `remote_object` so that it is no longer referenced
@@ -133,16 +131,13 @@ def release_remote_object(
     Returns:
         Awaitable: Awaitable that yields None.
     """
-    object_id = remote_object.get('objectId')
+    object_id = remote_object.get("objectId")
     fut_none = client._loop.create_future()
     fut_none.set_result(None)
     if not object_id:
         return fut_none
     try:
-        return client.send(
-            RUNTIME_RELEASE_OBJECT,
-            {'objectId': object_id}
-        )
+        return client.send(RUNTIME_RELEASE_OBJECT, {"objectId": object_id})
     except Exception:
         # Harmless exceptions may happen if page navigated or closed.
         LOGGER.debug(
@@ -164,9 +159,9 @@ def is_javascript_method(method: str) -> bool:
     """
     method = method.strip()
     if (
-        method.startswith('function')
-        or method.startswith('async ')
-        or '=>' in method
+        method.startswith("function")
+        or method.startswith("async ")
+        or "=>" in method
     ):
         return True
     return False

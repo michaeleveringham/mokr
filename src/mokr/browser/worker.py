@@ -12,7 +12,6 @@ from mokr.constants import (
 )
 from mokr.execution.context import ExecutionContext, JavascriptHandle
 
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -57,7 +56,7 @@ class WebWorker(EventEmitter):
         self._client.on(RUNTIME_CONSOLE_API_CALL, self._on_console_api_called)
         self._client.on(
             RUNTIME_EXCEPTION_THROWN,
-            lambda exception: exception_thrown(exception['exceptionDetails']),
+            lambda exception: exception_thrown(exception["exceptionDetails"]),
         )
 
     @property
@@ -84,16 +83,16 @@ class WebWorker(EventEmitter):
     def _on_execution_context_created(self, event: dict) -> None:
         self._execution_context = ExecutionContext(
             self._client,
-            event['context'],
+            event["context"],
             self._context_js_handle_factory,
         )
         self._execution_context_callback(self._execution_context)
 
     def _on_console_api_called(self, event: dict) -> None:
         args = []
-        for arg in event.get('args', []):
+        for arg in event.get("args", []):
             args.append(self._context_js_handle_factory(arg))
-        self.console_api_callback(event['type'], args)
+        self.console_api_callback(event["type"], args)
 
     async def execution_context(self) -> ExecutionContext:
         """

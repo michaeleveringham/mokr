@@ -22,7 +22,6 @@ from mokr.constants import (
     RUNTIME_EXECUTION_CONTEXT_CREATED,
     RUNTIME_EXECUTION_CONTEXT_DESTROYED,
     RUNTIME_EXECUTION_CONTEXTS_CLEARED,
-
 )
 from mokr.exceptions import ElementHandleError, PageError
 from mokr.execution.context import ExecutionContext, JavascriptHandle
@@ -63,34 +62,34 @@ class FrameManager(EventEmitter):
         self._context_id_to_context: dict[str, ExecutionContext] = dict()
         events_to_methods = {
             PAGE_FRAME_ATTACHED: lambda event: self._on_frame_attached(
-                event.get('frameId', ''),
-                event.get('parentFrameId', ''),
+                event.get("frameId", ""),
+                event.get("parentFrameId", ""),
             ),
             PAGE_FRAME_NAVIGATED: lambda event: self._on_frame_navigated(
-                event.get('frame'),
+                event.get("frame"),
             ),
             PAGE_FRAME_NAVIGATED_IN_DOC: (
                 lambda event: self._on_frame_navigated_within_document(
-                    event.get('frameId'),
-                    event.get('url'),
+                    event.get("frameId"),
+                    event.get("url"),
                 )
             ),
             PAGE_FRAME_DETACHED: lambda event: self._on_frame_detached(
-                event.get('frameId'),
+                event.get("frameId"),
             ),
             PAGE_FRAME_STOPPED_LOADING: (
                 lambda event: self._on_frame_stopped_loading(
-                    event.get('frameId'),
+                    event.get("frameId"),
                 )
             ),
             RUNTIME_EXECUTION_CONTEXT_CREATED: (
                 lambda event: self._on_execution_context_created(
-                    event.get('context'),
+                    event.get("context"),
                 )
             ),
             RUNTIME_EXECUTION_CONTEXT_DESTROYED: (
                 lambda event: self._on_execution_context_destroyed(
-                    event.get('executionContextId'),
+                    event.get("executionContextId"),
                 )
             ),
             RUNTIME_EXECUTION_CONTEXTS_CLEARED: (
@@ -108,10 +107,10 @@ class FrameManager(EventEmitter):
         return self._main_frame
 
     def _on_lifecycle_event(self, event: dict) -> None:
-        frame = self._frames.get(event['frameId'])
+        frame = self._frames.get(event["frameId"])
         if not frame:
             return
-        frame._on_lifecycle_event(event['loaderId'], event['name'])
+        frame._on_lifecycle_event(event["loaderId"], event["name"])
         self.emit(LIFECYCLE_EVENT, frame)
 
     def _on_frame_stopped_loading(self, frame_id: str) -> None:
@@ -122,16 +121,16 @@ class FrameManager(EventEmitter):
         self.emit(LIFECYCLE_EVENT, frame)
 
     def _handle_frame_tree(self, frame_tree: dict) -> None:
-        frame = frame_tree['frame']
-        if 'parentId' in frame:
+        frame = frame_tree["frame"]
+        if "parentId" in frame:
             self._on_frame_attached(
-                frame['id'],
-                frame['parentId'],
+                frame["id"],
+                frame["parentId"],
             )
         self._on_frame_navigated(frame)
-        if 'childFrames' not in frame_tree:
+        if "childFrames" not in frame_tree:
             return
-        for child in frame_tree['childFrames']:
+        for child in frame_tree["childFrames"]:
             self._handle_frame_tree(child)
 
     def _on_frame_attached(self, frame_id: str, parent_frame_id: str) -> None:
@@ -143,22 +142,22 @@ class FrameManager(EventEmitter):
         self.emit(FRAME_ATTACHED, frame)
 
     def _on_frame_navigated(self, frame_payload: dict) -> None:
-        is_main_frame = not frame_payload.get('parentId')
+        is_main_frame = not frame_payload.get("parentId")
         if is_main_frame:
             frame = self._main_frame
         else:
-            frame = self._frames.get(frame_payload.get('id', ''))
+            frame = self._frames.get(frame_payload.get("id", ""))
         if not (is_main_frame or frame):
             raise PageError(
-                'Either navigated to top level or have a'
-                ' stale version of the navigated frame.'
+                "Either navigated to top level or have a"
+                " stale version of the navigated frame."
             )
         # Detach all child frames first.
         if frame:
             for child in frame.child_frames:
                 self._remove_frames_recursively(child)
         # Update or create main frame.
-        _id = frame_payload.get('id', '')
+        _id = frame_payload.get("id", "")
         if is_main_frame:
             if frame:
                 # Update id to retain identity on cross-process navigation.
@@ -191,17 +190,15 @@ class FrameManager(EventEmitter):
             self._remove_frames_recursively(frame)
 
     def _on_execution_context_created(self, context_payload: dict) -> None:
-        aux_data = context_payload.get('auxData')
-        if aux_data and aux_data.get('frameId'):
-            frame_id = aux_data['frameId']
+        aux_data = context_payload.get("auxData")
+        if aux_data and aux_data.get("frameId"):
+            frame_id = aux_data["frameId"]
         else:
             frame_id = None
         frame = self._frames.get(frame_id)
-        object_handle_factory = (
-            lambda obj: self.create_javascript_handle(
-                self.execution_context_by_id(context_payload['id']),
-                obj,
-            )
+        object_handle_factory = lambda obj: self.create_javascript_handle(
+            self.execution_context_by_id(context_payload["id"]),
+            obj,
         )
         context = ExecutionContext(
             self._client,
@@ -209,7 +206,7 @@ class FrameManager(EventEmitter):
             object_handle_factory,
             frame,
         )
-        self._context_id_to_context[context_payload['id']] = context
+        self._context_id_to_context[context_payload["id"]] = context
         if frame:
             frame._add_execution_context(context)
 
@@ -274,7 +271,7 @@ class FrameManager(EventEmitter):
         """
         context = self._context_id_to_context.get(context_id)
         if not context:
-            raise ElementHandleError(f'No context with id of: {context_id}')
+            raise ElementHandleError(f"No context with id of: {context_id}")
         return context
 
     def create_javascript_handle(
@@ -296,7 +293,7 @@ class FrameManager(EventEmitter):
         """
         if remote_object is None:
             remote_object = {}
-        if remote_object.get('subtype') == 'node':
+        if remote_object.get("subtype") == "node":
             return ElementHandle(
                 context,
                 self._client,

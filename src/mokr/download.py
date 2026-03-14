@@ -16,15 +16,14 @@ from tqdm import tqdm
 
 from mokr.constants import CHROME_VERSION, FIREFOX_BUILD, INSTALL_PATH
 
-
-CHROME_DL_HOST = f'https://storage.googleapis.com/chrome-for-testing-public/{CHROME_VERSION}'  # noqa
-FIREFOX_DL_HOST = f"https://archive.mozilla.org/pub/firefox/nightly/2024/01/2024-01-21-20-40-46-mozilla-central/firefox-{FIREFOX_BUILD}"  # noqa
+CHROME_DL_HOST = f"https://storage.googleapis.com/chrome-for-testing-public/{CHROME_VERSION}"  # noqa
+FIREFOX_DL_HOST = f"https://archive.mozilla.org/pub/firefox/nightly/2026/03/2026-03-12-21-59-27-mozilla-central/firefox-{FIREFOX_BUILD}"  # noqa
 
 CR_DOWNLOAD_URLS = {
-    'linux': f'{CHROME_DL_HOST}/linux64/chrome-linux64.zip',
-    'darwin': f'{CHROME_DL_HOST}/mac-x64/chrome-mac-x64.zip',
-    'mac_arm': f'{CHROME_DL_HOST}/mac-arm64/chrome-mac-arm64.zip',
-    'win32': f'{CHROME_DL_HOST}/win64/chrome-win64.zip',
+    "linux": f"{CHROME_DL_HOST}/linux64/chrome-linux64.zip",
+    "darwin": f"{CHROME_DL_HOST}/mac-x64/chrome-mac-x64.zip",
+    "mac_arm": f"{CHROME_DL_HOST}/mac-arm64/chrome-mac-arm64.zip",
+    "win32": f"{CHROME_DL_HOST}/win64/chrome-win64.zip",
 }
 FF_DOWNLOAD_URLS = {
     "linux": f"{FIREFOX_DL_HOST}.en-US.linux-x86_64.tar.bz2",
@@ -33,15 +32,32 @@ FF_DOWNLOAD_URLS = {
 }
 
 CR_BINARY_NAMES = {
-    'linux': INSTALL_PATH / CHROME_VERSION / 'chrome-linux64' / 'chrome',
-    'darwin': INSTALL_PATH / CHROME_VERSION / 'chrome-mac-x64' / 'Chrome.app' / 'Contents' / 'MacOS' / 'Chrome',  # noqa
-    'mac_arm': INSTALL_PATH / CHROME_VERSION / 'chrome-mac-arm64' / 'Google chrome for Testing.app' / 'Contents' / 'MacOS' / 'Google Chrome for Testing',  # noqa
-    'win32': INSTALL_PATH / CHROME_VERSION / 'chrome-win64' / 'chrome.exe',
+    "linux": INSTALL_PATH / CHROME_VERSION / "chrome-linux64" / "chrome",
+    "darwin": INSTALL_PATH
+    / CHROME_VERSION
+    / "chrome-mac-x64"
+    / "Chrome.app"
+    / "Contents"
+    / "MacOS"
+    / "Chrome",  # noqa
+    "mac_arm": INSTALL_PATH
+    / CHROME_VERSION
+    / "chrome-mac-arm64"
+    / "Google chrome for Testing.app"
+    / "Contents"
+    / "MacOS"
+    / "Google Chrome for Testing",  # noqa
+    "win32": INSTALL_PATH / CHROME_VERSION / "chrome-win64" / "chrome.exe",
 }
 FF_BINARY_NAMES = {
-    "linux": INSTALL_PATH / FIREFOX_BUILD / 'firefox' / 'firefox',
-    "darwin": INSTALL_PATH / FIREFOX_BUILD / 'Firefox Nightly.app' / 'Contents' / 'MacOS' / 'firefox',  # noqa
-    "win32": INSTALL_PATH / FIREFOX_BUILD / 'firefox' / 'firefox.exe',
+    "linux": INSTALL_PATH / FIREFOX_BUILD / "firefox" / "firefox",
+    "darwin": INSTALL_PATH
+    / FIREFOX_BUILD
+    / "Firefox Nightly.app"
+    / "Contents"
+    / "MacOS"
+    / "firefox",  # noqa
+    "win32": INSTALL_PATH / FIREFOX_BUILD / "firefox" / "firefox.exe",
 }
 CR_BINARY_PATHS = {
     k: v.expanduser().absolute() for k, v in CR_BINARY_NAMES.items()
@@ -74,16 +90,16 @@ def download_zip(browser_type: str, url: str) -> BytesIO:
     Returns:
         BytesIO: The browser content as a BytesIO object.
     """
-    print(f'Starting {browser_type.title()} download.')
+    print(f"Starting {browser_type.title()} download.")
     data = BytesIO()
     with requests.get(url, stream=True) as response:
         if response.status_code >= 400:
             raise requests.HTTPError(f"Bad response from server at: {url}")
         try:
-            total_length = int(response.headers['content-length'])
+            total_length = int(response.headers["content-length"])
         except (KeyError, ValueError, AttributeError):
             total_length = 0
-        process_bar = tqdm(total=total_length, unit_scale=True, unit='b')
+        process_bar = tqdm(total=total_length, unit_scale=True, unit="b")
         for chunk in response.iter_content(chunk_size=8192):
             data.write(chunk)
             process_bar.update(len(chunk))
@@ -162,7 +178,7 @@ def install_dmg(process_bar: tqdm, dmg_path: str, dest_path: Path) -> None:
         exception = e
     finally:
         proc = subprocess.run(
-            ['hdiutil', "detach", dmg_path, "-quiet"],
+            ["hdiutil", "detach", dmg_path, "-quiet"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
         )
@@ -186,7 +202,7 @@ def extract(browser_type: str, data: BytesIO, path: Path, url: str) -> None:
             doesn't end up extracted to the target.
     """
     # On mac, Firefox is a dmg file, need to mount it and copy contents.
-    print(f'Beginning {browser_type.title()} extraction.')
+    print(f"Beginning {browser_type.title()} extraction.")
     if url.lower().endswith(".dmg"):
         process_bar = tqdm(range(11))
         temp_dmg = tempfile.NamedTemporaryFile()
@@ -204,14 +220,14 @@ def extract(browser_type: str, data: BytesIO, path: Path, url: str) -> None:
         try:
             with open(temp_bz.name, "rb") as fileobj:
                 total_bytes = os.stat(temp_bz.name).st_size
-                process_bar = tqdm(total=total_bytes, unit_scale=True, unit='b')
+                process_bar = tqdm(total=total_bytes, unit_scale=True, unit="b")
                 with tarfile.open(fileobj=fileobj, mode="r:bz2") as tar:
                     last = 0
                     for member in tar:
                         member_data = tar.extractfile(member)
                         if member_data is None:
                             continue
-                        subpath = (path / member.name)
+                        subpath = path / member.name
                         subpath.parent.mkdir(parents=True, exist_ok=True)
                         subpath.write_bytes(member_data.read())
                         process_bar.update(fileobj.tell() - last)
@@ -225,20 +241,26 @@ def extract(browser_type: str, data: BytesIO, path: Path, url: str) -> None:
             for member in tqdm(zf.infolist()):
                 zf.extract(member, str(path))
     if not ensure_binary(browser_type):
-        raise IOError('Failed to extract browser.')
+        raise IOError("Failed to extract browser.")
     # On MacOS and Linux, helpers need execute too or process crashes instantly.
     if sys.platform == "win32":
         browser_binary(browser_type).chmod(
-            browser_binary(browser_type).stat().st_mode | stat.S_IXOTH
-            | stat.S_IXGRP | stat.S_IXUSR | stat.S_IEXEC
+            browser_binary(browser_type).stat().st_mode
+            | stat.S_IXOTH
+            | stat.S_IXGRP
+            | stat.S_IXUSR
+            | stat.S_IEXEC
         )
     else:
         for subpath in path.glob("**/*"):
             subpath.chmod(
-                subpath.stat().st_mode | stat.S_IXOTH
-                | stat.S_IXGRP | stat.S_IXUSR | stat.S_IEXEC
+                subpath.stat().st_mode
+                | stat.S_IXOTH
+                | stat.S_IXGRP
+                | stat.S_IXUSR
+                | stat.S_IEXEC
             )
-    print(f'{browser_type.title()} successfully extracted to: {path}')
+    print(f"{browser_type.title()} successfully extracted to: {path}")
 
 
 def install_binary(browser_type: str) -> None:

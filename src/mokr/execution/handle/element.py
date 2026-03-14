@@ -68,7 +68,7 @@ class ElementHandle(JavascriptHandle):
         for i, _ in enumerate(quad):
             p1 = quad[i]
             p2 = quad[(i + 1) % len(quad)]
-            area += (p1['x'] * p2['y'] - p2['x'] * p1['y']) / 2
+            area += (p1["x"] * p2["y"] - p2["x"] * p1["y"]) / 2
         return area
 
     async def _scroll_into_view_if_needed(self) -> None:
@@ -85,17 +85,17 @@ class ElementHandle(JavascriptHandle):
         try:
             result = await self._client.send(
                 DOM_CONTENT_QUADS,
-                {'objectId': self._remote_object.get('objectId')}
+                {"objectId": self._remote_object.get("objectId")},
             )
         except Exception:
             LOGGER.error(
                 "Unhandled error calculating point on element.",
                 exc_info=True,
             )
-        if not result or not result.get('quads'):
+        if not result or not result.get("quads"):
             raise ElementHandleError
         quads = []
-        for _quad in result.get('quads'):
+        for _quad in result.get("quads"):
             _q = self._from_protocol_quad(_quad)
             if self._compute_quad_area(_q) > 1:
                 quads.append(_q)
@@ -105,15 +105,15 @@ class ElementHandle(JavascriptHandle):
         x = 0
         y = 0
         for point in quad:
-            x += point['x']
-            y += point['y']
-        return {'x': x / 4, 'y': y / 4}
+            x += point["x"]
+            y += point["y"]
+        return {"x": x / 4, "y": y / 4}
 
     async def _get_box_model(self) -> dict | None:
         try:
             result: dict | None = await self._client.send(
                 DOM_BOX_MODEL,
-                {'objectId': self._remote_object.get('objectId')},
+                {"objectId": self._remote_object.get("objectId")},
             )
         except NetworkError:
             LOGGER.error("Error getting box model.", exc_info=True)
@@ -122,10 +122,10 @@ class ElementHandle(JavascriptHandle):
 
     def _from_protocol_quad(self, quad: list[int]) -> list[dict[str, int]]:
         return [
-            {'x': quad[0], 'y': quad[1]},
-            {'x': quad[2], 'y': quad[3]},
-            {'x': quad[4], 'y': quad[5]},
-            {'x': quad[6], 'y': quad[7]},
+            {"x": quad[0], "y": quad[1]},
+            {"x": quad[2], "y": quad[3]},
+            {"x": quad[4], "y": quad[5]},
+            {"x": quad[6], "y": quad[7]},
         ]
 
     def _as_element(self) -> ElementHandle:
@@ -140,13 +140,12 @@ class ElementHandle(JavascriptHandle):
             Frame | None: Target `mokr.frame.Frame` if within iframe.
         """
         node_info = await self._client.send(
-            DOM_DESCRIBE_NODE,
-            {'objectId': self._remote_object.get('objectId')}
+            DOM_DESCRIBE_NODE, {"objectId": self._remote_object.get("objectId")}
         )
-        node_obj = node_info.get('node', {})
-        if not isinstance(node_obj.get('frameId'), str):
+        node_obj = node_info.get("node", {})
+        if not isinstance(node_obj.get("frameId"), str):
             return None
-        return self._frame_manager.frame(node_obj['frameId'])
+        return self._frame_manager.frame(node_obj["frameId"])
 
     async def content(self) -> str:
         html_handle = await self.get_property("outerHTML")
@@ -162,8 +161,8 @@ class ElementHandle(JavascriptHandle):
         """
         await self._scroll_into_view_if_needed()
         center = await self._calculate_origin()
-        x = center.get('x', 0)
-        y = center.get('y', 0)
+        x = center.get("x", 0)
+        y = center.get("y", 0)
         await self._page.mouse.move(x, y)
 
     async def click(
@@ -190,8 +189,8 @@ class ElementHandle(JavascriptHandle):
         """
         await self._scroll_into_view_if_needed()
         center = await self._calculate_origin()
-        x = center.get('x', 0)
-        y = center.get('y', 0)
+        x = center.get("x", 0)
+        y = center.get("y", 0)
         await self._page.mouse.click(x, y, button, click_count, delay)
 
     async def upload_file(self, file_paths: list[str]) -> None:
@@ -203,10 +202,9 @@ class ElementHandle(JavascriptHandle):
         """
         self._page._is_firefox(caller=self)
         files = [os.path.abspath(p) for p in file_paths]
-        object_id = self._remote_object.get('objectId')
+        object_id = self._remote_object.get("objectId")
         return await self._client.send(
-            DOM_INPUT_FILES,
-            {'objectId': object_id, 'files': files}
+            DOM_INPUT_FILES, {"objectId": object_id, "files": files}
         )
 
     async def tap(self) -> None:
@@ -222,8 +220,8 @@ class ElementHandle(JavascriptHandle):
         self._page._is_firefox(caller=self)
         await self._scroll_into_view_if_needed()
         center = await self._calculate_origin()
-        x = center.get('x', 0)
-        y = center.get('y', 0)
+        x = center.get("x", 0)
+        y = center.get("y", 0)
         await self._page.touchscreen.tap(x, y)
 
     async def focus(self) -> None:
@@ -277,12 +275,12 @@ class ElementHandle(JavascriptHandle):
         result = await self._get_box_model()
         if not result:
             return None
-        quad = result['model']['border']
+        quad = result["model"]["border"]
         x = min(quad[0], quad[2], quad[4], quad[6])
         y = min(quad[1], quad[3], quad[5], quad[7])
         width = max(quad[0], quad[2], quad[4], quad[6]) - x
         height = max(quad[1], quad[3], quad[5], quad[7]) - y
-        return {'x': x, 'y': y, 'width': width, 'height': height}
+        return {"x": x, "y": y, "width": width, "height": height}
 
     async def box_model(self) -> dict | None:
         """
@@ -296,14 +294,14 @@ class ElementHandle(JavascriptHandle):
         result = await self._get_box_model()
         if not result:
             return None
-        model = result.get('model', {})
+        model = result.get("model", {})
         return {
-            'content': self._from_protocol_quad(model.get('content')),
-            'padding': self._from_protocol_quad(model.get('padding')),
-            'border': self._from_protocol_quad(model.get('border')),
-            'margin': self._from_protocol_quad(model.get('margin')),
-            'width': model.get('width'),
-            'height': model.get('height'),
+            "content": self._from_protocol_quad(model.get("content")),
+            "padding": self._from_protocol_quad(model.get("padding")),
+            "border": self._from_protocol_quad(model.get("border")),
+            "margin": self._from_protocol_quad(model.get("margin")),
+            "width": model.get("width"),
+            "height": model.get("height"),
         }
 
     async def screenshot(
@@ -351,17 +349,17 @@ class ElementHandle(JavascriptHandle):
             raise ElementHandleError
         original_viewport = copy.deepcopy(self._page.viewport)
         if (
-            bounding_box['width'] > original_viewport['width']
-            or bounding_box['height'] > original_viewport['height']
+            bounding_box["width"] > original_viewport["width"]
+            or bounding_box["height"] > original_viewport["height"]
         ):
             new_viewport = {
-                'width': max(
-                    original_viewport['width'],
-                    math.ceil(bounding_box['width']),
+                "width": max(
+                    original_viewport["width"],
+                    math.ceil(bounding_box["width"]),
                 ),
-                'height': max(
-                    original_viewport['height'],
-                    math.ceil(bounding_box['height']),
+                "height": max(
+                    original_viewport["height"],
+                    math.ceil(bounding_box["height"]),
                 ),
             }
             new_viewport = copy.deepcopy(original_viewport)
@@ -373,11 +371,11 @@ class ElementHandle(JavascriptHandle):
         if not bounding_box:
             raise ElementHandleError
         _obj = await self._client.send(PAGE_GET_LAYOUT)
-        page_x = _obj['layoutViewport']['pageX']
-        page_y = _obj['layoutViewport']['pageY']
+        page_x = _obj["layoutViewport"]["pageX"]
+        page_y = _obj["layoutViewport"]["pageY"]
         clip = copy.deepcopy(bounding_box)
-        clip['x'] = clip['x'] + page_x
-        clip['y'] = clip['y'] + page_y
+        clip["x"] = clip["x"] + page_x
+        clip["y"] = clip["y"] + page_y
         buffer = await self._page.screenshot(
             file_type=file_type,
             file_path=file_path,
@@ -403,7 +401,7 @@ class ElementHandle(JavascriptHandle):
             ElementHandle | None: ElementHandle if found or None.
         """
         handle = await self.execution_context.evaluate_handle(
-            '(element, selector) => element.querySelector(selector)',
+            "(element, selector) => element.querySelector(selector)",
             self,
             selector,
         )
@@ -425,8 +423,9 @@ class ElementHandle(JavascriptHandle):
             list[ElementHandle]: List of ElementHandle if any or empty list.
         """
         array_handle = await self.execution_context.evaluate_handle(
-            '(element, selector) => element.querySelectorAll(selector)',
-            self, selector,
+            "(element, selector) => element.querySelectorAll(selector)",
+            self,
+            selector,
         )
         properties = await array_handle.get_properties()
         await array_handle.dispose()

@@ -8,7 +8,7 @@ from mokr.exceptions import MokrTimeoutError
 from mokr.utils.remote import add_event_listener, remove_event_listeners
 
 
-class EventWaiter():
+class EventWaiter:
     def __init__(
         self,
         emitter: EventEmitter,
@@ -66,7 +66,7 @@ class EventWaiter():
     async def _timeout_timer(self) -> None:
         await asyncio.sleep(self._timeout / 1000)
         self._reject_callback(
-            MokrTimeoutError('Timeout exceeded while waiting for event.')
+            MokrTimeoutError("Timeout exceeded while waiting for event.")
         )
 
     def wait(self) -> Awaitable:
@@ -82,9 +82,11 @@ class EventWaiter():
             self._emitter,
             self._event_name,
             (
-                lambda target: self._loop.create_task(self._alistener(target))
-                if inspect.iscoroutinefunction(self._predicate)
-                else self._listener
+                lambda target: (
+                    self._loop.create_task(self._alistener(target))
+                    if inspect.iscoroutinefunction(self._predicate)
+                    else self._listener
+                )
             ),
         )
         if self._timeout:
