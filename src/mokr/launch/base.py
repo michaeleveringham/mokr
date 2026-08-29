@@ -2,24 +2,18 @@ import asyncio
 import gc
 import logging
 import socket
-import subprocess
 from abc import ABC
+from typing import Generic, TypeVar
 
-from mokr.browser.browser import Browser
-from mokr.browser.target import Target
-from mokr.connection import Connection
-from mokr.constants import BROWSER_CLOSE
 from mokr.download import browser_binary, ensure_binary
-from mokr.utils import (
-    add_event_listener,
-    get_ws_endpoint,
-    remove_event_listeners,
-)
+from mokr.protocols import Browser
 
 LOGGER = logging.getLogger(__name__)
 
+BrowserT = TypeVar("BrowserT", bound=Browser, covariant=True)
 
-class Launcher(ABC):
+
+class Launcher(ABC, Generic[BrowserT]):
     kind = "abstract"
 
     def __init__(
@@ -43,8 +37,7 @@ class Launcher(ABC):
         firefox_addons_paths: list[str] = None,
     ) -> None:
         """
-        Class to handle launching browser process and creation of a
-        `mokr.browser.Browser` object.
+        Class to handle common browser-process launch configuration.
 
         Args:
             binary_path (str, optional): Path to executable to use.
@@ -147,9 +140,8 @@ class Launcher(ABC):
         self.cmd = [self.browser_binary] + self.browser_arguments
         self.initial_page_promise = self._loop.create_future()
 
-    async def __aenter__(self, *args, **kwargs) -> Browser:
-        browser = await self.launch()
-        return browser
+    async def __aenter__(self) -> BrowserT:
+        return await self.launch()
 
     async def __aexit__(self, *args, **kwargs) -> None:
         await self.stop()
@@ -227,44 +219,9 @@ class Launcher(ABC):
         if not self.browser_closed:
             await self.kill_browser()
 
-    def _initial_page_callback(self) -> None:
-        self.initial_page_promise.set_result(True)
-
-    def _check_target(self, target: Target) -> None:
-        if target.kind == "page":
-            self._initial_page_callback()
-
-    async def launch(self) -> Browser:
-        """Start browser process and return a `mokr.browser.Browser` object."""
-        self.browser_closed = False
-        self.connection = None
-        options = {}
-        options["env"] = self.env
-        if not self.dumpio:
-            options["stdout"] = subprocess.DEVNULL
-            options["stderr"] = subprocess.STDOUT
-        self.proc = subprocess.Popen(self.cmd, **options)
-        self.browser_ws_endpoint = get_ws_endpoint(self.url)
-        LOGGER.info(f"Browser listening on: {self.browser_ws_endpoint}")
-        self.connection = Connection(
-            self.browser_ws_endpoint,
-            self._loop,
-            self.slow_mo,
-        )
-        browser = Browser(
-            self.kind,
-            self.connection,
-            [],
-            self.ignore_https_errors,
-            self.default_viewport,
-            self.proc,
-            self.kill_browser,
-            self.proxy_credentials,
-            self.default_user_agent,
-        )
-        await browser.ready()
-        await self.ensure_initial_page(browser)
-        return browser
+    async def launch(self) -> BrowserT:
+        """Start this launcher's protocol-specific browser backend."""
+        raise NotImplementedError
 
     def _wait_for_browser_close(self) -> None:
         if self.proc.poll() is None and not self.browser_closed:
@@ -276,30 +233,16 @@ class Launcher(ABC):
                 # Browser process may be already closed.
                 pass
 
-    async def ensure_initial_page(self, browser: Browser) -> None:
-        """
-        Wait for a new page in a given `browser` to be created.
-
-        Args:
-            browser (Browser): Target `mokr.browser.Browser`.
-        """
-        for target in browser.targets():
-            if target.kind == "page":
-                return
-        listeners = [
-            add_event_listener(browser, "targetcreated", self._check_target)
-        ]
-        await self.initial_page_promise
-        remove_event_listeners(listeners)
+    async def _close_connection(self) -> None:
+        if self.connection:
+            await self.connection.dispose()
 
     async def kill_browser(self) -> None:
         """Kill running browser process."""
         LOGGER.info("Killing browser process...")
-        if self.connection and self.connection._connected:
-            try:
-                await self.connection.send(BROWSER_CLOSE)
-                await self.connection.dispose()
-            except Exception:
-                LOGGER.warning("Ignored error killing browser.", exc_info=True)
+        try:
+            await self._close_connection()
+        except Exception:
+            LOGGER.warning("Ignored error killing browser.", exc_info=True)
         self._wait_for_browser_close()
         self._clean_restore_data_dirs()

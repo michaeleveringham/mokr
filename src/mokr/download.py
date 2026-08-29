@@ -14,10 +14,14 @@ from zipfile import ZipFile
 import requests
 from tqdm import tqdm
 
-from mokr.constants import CHROME_VERSION, FIREFOX_BUILD, INSTALL_PATH
+from mokr.constants import (
+    CHROME_VERSION,
+    FIREFOX_BUILD,
+    INSTALL_PATH,
+)
 
 CHROME_DL_HOST = f"https://storage.googleapis.com/chrome-for-testing-public/{CHROME_VERSION}"  # noqa
-FIREFOX_DL_HOST = f"https://archive.mozilla.org/pub/firefox/nightly/2026/03/2026-03-12-21-59-27-mozilla-central/firefox-{FIREFOX_BUILD}"  # noqa
+FIREFOX_DL_HOST = f"https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central/firefox-{FIREFOX_BUILD}"  # noqa
 
 CR_DOWNLOAD_URLS = {
     "linux": f"{CHROME_DL_HOST}/linux64/chrome-linux64.zip",
@@ -26,7 +30,7 @@ CR_DOWNLOAD_URLS = {
     "win32": f"{CHROME_DL_HOST}/win64/chrome-win64.zip",
 }
 FF_DOWNLOAD_URLS = {
-    "linux": f"{FIREFOX_DL_HOST}.en-US.linux-x86_64.tar.bz2",
+    "linux": f"{FIREFOX_DL_HOST}.en-US.linux-x86_64.tar.xz",
     "darwin": f"{FIREFOX_DL_HOST}.en-US.mac.dmg",
     "win32": f"{FIREFOX_DL_HOST}.en-US.win64.zip",
 }
@@ -214,14 +218,14 @@ def extract(browser_type: str, data: BytesIO, path: Path, url: str) -> None:
             temp_dmg.close()
             raise
         process_bar.close()
-    elif url.lower().endswith(".tar.bz2"):
-        temp_bz = tempfile.NamedTemporaryFile()
-        temp_bz.write(data.getbuffer())
+    elif url.lower().endswith((".tar.bz2", ".tar.xz")):
+        temp_tar = tempfile.NamedTemporaryFile()
+        temp_tar.write(data.getbuffer())
         try:
-            with open(temp_bz.name, "rb") as fileobj:
-                total_bytes = os.stat(temp_bz.name).st_size
+            with open(temp_tar.name, "rb") as fileobj:
+                total_bytes = os.stat(temp_tar.name).st_size
                 process_bar = tqdm(total=total_bytes, unit_scale=True, unit="b")
-                with tarfile.open(fileobj=fileobj, mode="r:bz2") as tar:
+                with tarfile.open(fileobj=fileobj, mode="r:*") as tar:
                     last = 0
                     for member in tar:
                         member_data = tar.extractfile(member)
@@ -234,7 +238,7 @@ def extract(browser_type: str, data: BytesIO, path: Path, url: str) -> None:
                         last = fileobj.tell()
                 process_bar.close()
         except Exception:
-            temp_bz.close()
+            temp_tar.close()
             raise
     else:
         with ZipFile(data) as zf:

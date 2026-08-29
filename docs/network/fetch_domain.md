@@ -1,6 +1,6 @@
-# `FetchDomain`
+# Page Fetch Domains
 
-A `FetchDomain` allows sending JavaScript [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch)
+A page fetch domain allows sending JavaScript [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch)
 requests within a certain page.
 
 Note that `fetch` is sensitive to the CORS policy on a given page; if your request is failing or
@@ -8,21 +8,25 @@ missing content, try using the `HttpDomain` instead.
 
 ## Usage
 
-A `FetchDomain` object is initialised with every new `Page` and bound to it under
-`Page.fetch_domain`. A shortcut is available, too, via `Page.fetch()`.
+Every Chrome CDP and Firefox BiDi page exposes one through
+`Page.fetch_domain`. Chrome uses `CdpFetchDomain`, while Firefox uses the
+standards-based `BidiFetchDomain`. Callers should normally use the
+`Page.fetch()` shortcut.
 
-A basic example using Firefox to navigate to a site and then perform a fetch request.
+Note: Use `HttpDomain` for external HTTP requests whose cookies synchronize with the
+browser but should not be constrained by page CORS.
+
+A basic example that navigates to a site and then performs a fetch request.
 
 ```python
 import asyncio
 from mokr import launch
 
 async def main():
-    async with launch("firefox") as browser:
-        page = await browser.first_page("https://example.com")
+    async with launch("chrome") as browser:
+        page = await browser.first_page()
+        await page.goto("https://example.com")
         response = await page.fetch("https://example.com")
-        # Note that while Firefox response content is empty in regular
-        # navigations, it is populated in ad hoc fetch requests.
         content = await response.content()
         print(content)
 
@@ -34,12 +38,11 @@ get a new image, and fulfill the request with it.
 
 ```python
 import asyncio
-from mokr import launch
-from mokr.network import Request, Response
+from mokr import Request, Response, launch
 
 async def main():
     snake_url = "https://upload.wikimedia.org/wikipedia/commons/3/32/Python_molurus_molurus_2.jpg"
-    async with launch(headless=False) as browser:
+    async with launch("chrome", headless=False) as browser:
         page = await browser.first_page()
 
         async def intercept_request(request: Request) -> Request | None:
@@ -51,7 +54,7 @@ async def main():
             else:
                 return request
 
-        def log_response(response: Response) -> Request:
+        def log_response(response: Response) -> None:
             print(f"Got {response.status} from: {response.url}")
         
         page.on("request", intercept_request)

@@ -3,12 +3,14 @@
 An `HttpDomain` allows sending ad hoc HTTP2-enabled requests via [`httpx`](https://pypi.org/project/httpx/)
 while sharing session state back and forth with a `Page`.
 
-Unlike `FetchDomain`, it is not sensitive to the CORS policy on the parent page.
+Unlike a page fetch domain, it is not sensitive to the CORS policy on the
+parent page. It returns protocol-neutral `HttpRequest` and `HttpResponse`
+objects rather than CDP or BiDi network objects.
 
 ## Usage
 
-An `HttpDomain` object is initialised with every new `Page` on first use. It is bound to it under
-`Page.http_domain`. A shortcut is available, too, via `Page.http()`.
+An `HttpDomain` object is initialised with every new `Page` on first use. It is
+bound to it under `Page.http_domain`.
 
 You can also control the initialisation of the session via `Page.make_http_domain`, though
 that is entirely optional. Cookies and user-agent will be set automatically.
@@ -21,9 +23,9 @@ Using the `HttpDomain` to get pages after a login is completed via the browser.
 from mokr import launch
 
 async def main():
-    async with launch() as browser:
+    async with launch("firefox") as browser:
         page = await browser.first_page()
-        response = await page.http(
+        response = await page.http_domain.send(
             "https://some.site/login",
             method="post",
             json={"user": "me", "pass": "secret"},
@@ -43,7 +45,7 @@ import asyncio
 from mokr import launch
 
 async def main():
-    async with launch() as browser:
+    async with launch("firefox") as browser:
         page = await browser.first_page()
         await page.goto("https://some.site/login")
         # Do the login process here...!
@@ -53,7 +55,7 @@ async def main():
             html = await link_element.content()
             # Here parse would be a utilty written by you.
             url = parse(html)
-            response = await page.http(url)
+            response = await page.http_domain.send(url)
             content = await response.content()
             print(content)
 

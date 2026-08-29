@@ -6,7 +6,7 @@ from copy import copy
 from urllib.parse import urlparse
 
 from mokr.constants import INSTALL_PATH
-from mokr.launch.base import Launcher
+from mokr.cdp.launch import CdpLauncher
 
 CHROME_PROFILE_PATH = INSTALL_PATH / ".dev_profile"
 
@@ -47,7 +47,7 @@ DEFAULT_CHROME_ARGS = [
 ]
 
 
-class ChromeLauncher(Launcher):
+class ChromeLauncher(CdpLauncher):
     kind = "chrome"
 
     def _parse_proxy(self, proxy: str) -> None:
