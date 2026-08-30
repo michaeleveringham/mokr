@@ -13,21 +13,20 @@ Changed:
   `puppeteer` heavily, but is not 1:1 with it. It uses the
   [fetch domain](https://chromedevtools.github.io/devtools-protocol/tot/Fetch/) instead
   of just the [network domain](https://chromedevtools.github.io/devtools-protocol/tot/Network/).
-  - Request interception is enabled by default. Can be disabled with 
-  `Page.set_request_interception_enabled(False)` (on Chrome, Firefox is always on).
+  - Chrome request interception is enabled by default and can be disabled with
+  `Page.set_request_interception_enabled(False)`. Firefox BiDi interception is
+  enabled when a `"request"` route is registered.
   - `Browser.create` has been replaced with `Browser.ready` and accepts no keyword arguments.
   This means a `Browser` can be instantied and target discovery postponed until
   `.ready()` is called.
   - The `launch` method is top-level and offers an async context manager to better handle
   graceful exits.
   - Firefox only: Temporary extensions can be installed at browser launch.
-  - `CDPSession` is now `DevtoolsSession` and shares a base class with `Connection`,
-  called `RemoteConnection`.
 
 New:
-  - Partial Firefox support.
-  - There is a new class, `FetchDomain` that can be used to send fetch requests
-  via `Page.fetch` (this calls the page's instantiated `FetchDomain` object).
+  - Firefox support.
+  - Pages expose protocol-specific fetch-domain implementations through
+  `Page.fetch_domain` and the `Page.fetch` shortcut.
   - Another new class, `HttpDomain` is available to send ad hoc requests via an
   `httpx`, HTTP2-enabled, client that syncs it's cookies with the parent `Page` and
   vice-versa.
@@ -36,7 +35,8 @@ New:
 
 Removed:
   - Tracing has been removed.
-  - `ElementHandle.querySelectorEval` and `.querySelectorAllEval` have been removed.
+  - The legacy element-handle `querySelectorEval` and `querySelectorAllEval`
+  helpers have been removed.
 
 ## Compared
 

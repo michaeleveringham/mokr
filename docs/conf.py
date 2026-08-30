@@ -1,7 +1,7 @@
 project = 'mokr'
 copyright = '2026, Michael Everingham'
 author = 'Michael Everingham'
-release = "0.2.0"
+release = "1.0.0"
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']

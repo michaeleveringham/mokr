@@ -41,7 +41,7 @@ class PageError(BrowserError):
     pass
 
 
-class FirefoxNotImplementedError(NotImplementedError):
-    """Exception due to Firefox lacking CDP methods."""
+class UnsupportedOperationError(PageError):
+    """Raised when a public operation is unavailable on the active backend."""
 
     pass

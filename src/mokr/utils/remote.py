@@ -4,7 +4,7 @@ from typing import Any, Awaitable, Callable
 
 from pyee import EventEmitter
 
-from mokr.connection import DevtoolsConnection
+from mokr.cdp.connection import CdpSession
 from mokr.constants import RUNTIME_RELEASE_OBJECT
 from mokr.exceptions import ElementHandleError
 
@@ -115,9 +115,7 @@ def serialize_remote_object(remote_object: dict) -> Any:
     return remote_object.get("value")
 
 
-def release_remote_object(
-    client: DevtoolsConnection, remote_object: dict
-) -> Awaitable:
+def release_remote_object(client: CdpSession, remote_object: dict) -> Awaitable:
     """
     Release a given `remote_object` so that it is no longer referenced
     by the browser and can be garbage collected.
@@ -125,7 +123,7 @@ def release_remote_object(
     Ignores all exceptions raised when sending request to devtools session.
 
     Args:
-        client (DevtoolsConnection): A `mokr.connection.DevtoolsConnection`.
+        client (CdpSession): A `mokr.cdp.connection.CdpSession`.
         remote_object (dict): A remote object as dictionary.
 
     Returns:

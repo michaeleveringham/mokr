@@ -1,29 +1,23 @@
 from __future__ import annotations
 
 import asyncio
-import gc
 import json
+import logging
 import os
 import shutil
-import socket
+import subprocess
 import sys
 import tempfile
 import time
-from pathlib import Path
 from urllib.parse import urlparse
 
-from geckordp.actors.addon.addons import AddonsActor
-from geckordp.actors.preference import PreferenceActor
-from geckordp.actors.root import RootActor
-from geckordp.rdp_client import RDPClient
-
-from mokr import network
-from mokr.browser.browser import Browser
+from mokr.bidi import BidiConnection, BidiSession, FirefoxBrowser
 from mokr.constants import INSTALL_PATH
-from mokr.exceptions import BrowserError
 from mokr.launch.base import Launcher
+from mokr.utils import get_bidi_ws_endpoint
 
 CHROME_PROFILE_PATH = INSTALL_PATH / ".dev_profile"
+LOGGER = logging.getLogger(__name__)
 
 # Some of these comments
 DEFAULT_FIREFOX_USER_PREFS = {
@@ -187,23 +181,16 @@ DEFAULT_FIREFOX_USER_PREFS = {
     "network.cookie.cookieBehavior": 0,
     # Temporarily force disable BFCache in parent (https://bit.ly/bug-1732263)
     "fission.bfcacheInParent": False,
-    # Only enable the CDP protocol
-    "remote.active-protocols": 2,
     # Force all web content to use a single content process. TODO: remove
     # this once Firefox supports mouse event dispatch from the main frame
     # context. Once this happens, webContentIsolationStrategy should only
     # be set for CDP. See
     # https://bugzilla.mozilla.org/show_bug.cgi?id=1773393
     "fission.webContentIsolationStrategy": 0,
-    # Needed to prevent dialog for connection for loading temporary extensions.
-    "devtools.chrome.enabled": True,
-    "devtools.debugger.prompt-connection": False,
     # Disable safe-mode on crashes.
     "browser.sessionstore.max_resumed_crashes": 0,
     "browser.sessionstore.restore_on_demand": False,
     "browser.sessionstore.restore_tabs_lazily": False,
-    # Enable remote debugging (only needed for loading extensions).
-    "devtools.debugger.remote-enabled": True,
     # Set loads of first run / whats new flags.
     "browser.messaging-system.whatsNewPanel.enabled": False,
     "app.normandy.first_run": False,
@@ -223,14 +210,11 @@ DEFAULT_FIREFOX_USER_PREFS = {
 }
 
 
-class FirefoxLauncher(Launcher):
+class FirefoxLauncher(Launcher[FirefoxBrowser]):
     kind = "firefox"
 
     def __init__(self, *args, **kwargs) -> None:
-        # Flag to indicate that proxy user prefs need to be set via rdp client.
-        self._need_set_proxy_via_rdp = False
         super().__init__(*args, **kwargs)
-        # async def __aenter__(self, *args, **kwargs) -> FirefoxLauncher:
         self._create_profile()
 
     def _parse_proxy(self, proxy: str) -> None:
@@ -249,23 +233,6 @@ class FirefoxLauncher(Launcher):
             credentials["password"] = proxy_parts.password
         return credentials
 
-    def _get_debugger_port(self) -> None:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        for port in range(5999, 65000):
-            if port == self.port:
-                continue
-            try:
-                sock = socket.socket()
-                sock.bind(("localhost", port))
-                sock.close()
-                del sock
-                gc.collect()
-                self._remote_debugger_port = port
-                return
-            except OSError:
-                continue
-        raise OSError("No available ports to run debugger.")
-
     def _make_proxy_prefs(self) -> dict:
         prefs = {}
         proxy_data = self.proxy_credentials
@@ -278,21 +245,14 @@ class FirefoxLauncher(Launcher):
                 }
             )
         else:
-            if proxy_data.get("username"):
-                # If set here, the debug connection to the RDP session will be
-                # blocked by the HTTP proxy.
-                # Using this flag to signal to set via RDP after extensions are
-                # all ready as RDP will be done with then.
-                self._need_set_proxy_via_rdp = True
-            else:
-                prefs.update(
-                    {
-                        "network.proxy.http": proxy_data["host"],
-                        "network.proxy.ssl": proxy_data["host"],
-                        "network.proxy.http_port": proxy_data["port"],
-                        "network.proxy.ssl_port": proxy_data["port"],
-                    }
-                )
+            prefs.update(
+                {
+                    "network.proxy.http": proxy_data["host"],
+                    "network.proxy.ssl": proxy_data["host"],
+                    "network.proxy.http_port": proxy_data["port"],
+                    "network.proxy.ssl_port": proxy_data["port"],
+                }
+            )
         prefs.update(
             {
                 "network.proxy.type": 1,
@@ -304,11 +264,9 @@ class FirefoxLauncher(Launcher):
         return prefs
 
     def _create_profile(self):
-        # Populates the user.js file with custom preferences as needed to allow
-        # Firefox's CDP support to properly function. These preferences will be
-        # automatically copied over to prefs.js during startup of Firefox. To be
-        # able to restore the original values of preferences a backup of
-        # prefs.js will be created.
+        # Populates the user.js file with the automation preferences required
+        # by the launched Firefox profile. Firefox's current Remote Agent is
+        # WebDriver BiDi-only; no CDP preference is needed here.
         extra_prefs = self.firefox_user_prefs if self.firefox_user_prefs else {}
         if not os.path.exists(self.user_data_dir):
             os.mkdir(self.user_data_dir, parents=True)  # recursive: True,
@@ -338,21 +296,15 @@ class FirefoxLauncher(Launcher):
         user_data_dir: str = None,
         devtools: bool = False,
     ):
-        self._get_debugger_port()
         browser_arguments = [
             "-no-remote",
             "-new-instance",
             "-no-default-browser-check",
-            # For temporary extensions. Should change to avoid hard-coded port.
-            "-start-debugger-server",
-            f"{self._remote_debugger_port}",
         ]
         if headless is None:
             headless = not devtools
         if sys.platform == "darwin":
             browser_arguments.append("-foreground")
-        elif sys.platform == "win32":
-            browser_arguments.append("-wait-for-browser")
         if user_data_dir:
             browser_arguments.append("-profile")
             browser_arguments.append(user_data_dir)
@@ -407,7 +359,10 @@ class FirefoxLauncher(Launcher):
 
     def _clean_restore_data_dirs(self) -> None:
         prefs_backup_path = os.path.join(self.user_data_dir, "prefs.js.mokr")
-        for _ in range(100):
+        # Firefox can keep the profile lock briefly after ``browser.close``
+        # has answered, especially on Windows. Wait long enough for its child
+        # processes to release it before treating cleanup as a failure.
+        for _ in range(500):
             if self.temp_user_data_dir and os.path.exists(
                 self.temp_user_data_dir
             ):
@@ -445,86 +400,79 @@ class FirefoxLauncher(Launcher):
                     f" at {prefs_backup_path}"
                 )
 
-    def _make_proxy_extension(self) -> None:
-        addon_path = Path(network.__file__).parent / "extensions" / "ffauth"
-        # Use an arbitrary name as creds will be within file.
-        # TODO load creds to storage so they arent written to disk.
-        gen_addon_path = Path(tempfile.mkdtemp())
-        shutil.copytree(addon_path, gen_addon_path, dirs_exist_ok=True)
-        data = {
-            "username": self.proxy_credentials["username"],
-            "password": self.proxy_credentials.get("password", ""),
-        }
-        background_js = gen_addon_path / "background.js"
-        content = background_js.read_text()
-        new_content = content.replace("creds_placeholder", json.dumps(data))
-        background_js.write_text(new_content)
-        if not self.firefox_addons_paths:
-            self.firefox_addons_paths = []
-        self.firefox_addons_paths.insert(0, str(gen_addon_path))
-
-    def _rdp_response_valid(
-        self,
-        actor_id: str,
-        response: dict,
-        allow_null: bool = False,
-    ) -> bool:
-        # https://github.com/jpramosi/geckordp/blob/51e658824d66a2c45b7f4b6e9223703902a1e758/tests/helpers/utils.py#L26  # noqa
-        response_string = str(response).lower()
-        if not (
-            actor_id in response.get("from", "")
-            and "no such actor" not in response_string
-            and (allow_null or " is null" not in response_string)
-            and "unrecognized" not in response_string
-        ):
-            raise BrowserError("Failed to set Firefox preferences via RDP.")
-
-    def _set_proxy_via_rdp(self, client: RDPClient, root_ids: dict) -> None:
-        preference = PreferenceActor(client, root_ids["preferenceActor"])
-        prefs = {
-            "network.proxy.http": self.proxy_credentials["host"],
-            "network.proxy.ssl": self.proxy_credentials["host"],
-            "network.proxy.http_port": self.proxy_credentials["port"],
-            "network.proxy.ssl_port": self.proxy_credentials["port"],
-        }
-        for pref, value in prefs.items():
-            if isinstance(value, str):
-                response = preference.set_char_pref(pref, value)
-            elif isinstance(value, int):
-                response = preference.set_int_pref(pref, value)
-            self._rdp_response_valid("preferenceActor", response)
-
-    def _register_network_addon(self, addon_paths: str) -> None:
-        client = RDPClient()
-        url_parts = urlparse(self.url)
-        host = url_parts.hostname
-        port = self._remote_debugger_port
-        connection_response = client.connect(host, port)
-        if not connection_response:
-            raise BrowserError(
-                f"Cannot install addons, Firefox unreachable at {host}:{port}."
+    async def launch(self) -> FirefoxBrowser:
+        """Launch Firefox and connect to its native WebDriver BiDi endpoint."""
+        self.browser_closed = False
+        self.connection = None
+        options = {"env": self.env}
+        # Firefox announces its BiDi WebSocket address on stdout. Capture it
+        # even when dumpio is requested so endpoint discovery remains reliable.
+        options["stdout"] = subprocess.PIPE
+        options["stderr"] = subprocess.STDOUT
+        options["text"] = True
+        self.proc = subprocess.Popen(self.cmd, **options)
+        try:
+            self.browser_ws_endpoint = await asyncio.to_thread(
+                get_bidi_ws_endpoint,
+                self.proc,
+                f"ws://127.0.0.1:{self.port}/session",
             )
-        root = RootActor(client)
-        root_actor_ids = root.get_root()
-        addon_actor_id = root_actor_ids["addonsActor"]
-        addon_actor = AddonsActor(client, addon_actor_id)
-        for addon_path in addon_paths:
-            response = addon_actor.install_temporary_addon(addon_path)
-            addon_id = response.get("id", None)
-            success = addon_id is not None
-            if not success:
-                raise BrowserError(f"Failed to add extension at {addon_path}.")
-        if self._need_set_proxy_via_rdp:
-            self._set_proxy_via_rdp(client, root_actor_ids)
-        client.disconnect()
-
-    async def launch(self) -> Browser:
-        browser = await super().launch()
+            self.connection = BidiConnection(
+                self.browser_ws_endpoint,
+                self._loop,
+                create_session=True,
+                session_capabilities={
+                    "alwaysMatch": {
+                        "unhandledPromptBehavior": {"default": "ignore"}
+                    }
+                },
+            )
+            await self.connection.start()
+            browser = FirefoxBrowser(
+                self.kind,
+                BidiSession(self.connection),
+                self.proc,
+                self.kill_browser,
+                self.default_viewport,
+                self.default_user_agent,
+                ignore_https_errors=self.ignore_https_errors,
+                proxy_credentials=self.proxy_credentials,
+            )
+            await browser.ready()
+        except Exception:
+            await self.kill_browser()
+            raise
         if self.proxy_credentials and self.proxy_credentials.get("username"):
-            self._make_proxy_extension()
-        if self.firefox_addons_paths:
-            await asyncio.to_thread(
-                self._register_network_addon,
-                self.firefox_addons_paths,
+            await browser.set_credentials(
+                self.proxy_credentials["username"],
+                self.proxy_credentials.get("password", ""),
             )
+        if self.firefox_addons_paths:
+            for addon_path in self.firefox_addons_paths:
+                await browser.install_extension(addon_path)
         return browser
+
+    async def kill_browser(self) -> None:
+        """Close the native BiDi session, then ensure Firefox has exited."""
+        if self.browser_closed:
+            return
+        self.browser_closed = True
+        if self.connection and self.connection.connected:
+            try:
+                await self.connection.send("browser.close")
+            except Exception:
+                LOGGER.warning(
+                    "Ignored error closing Firefox BiDi.", exc_info=True
+                )
+            await self.connection.dispose()
+        if self.proc and self.proc.poll() is None:
+            try:
+                await asyncio.to_thread(self.proc.wait, timeout=5)
+            except subprocess.TimeoutExpired:
+                self.proc.terminate()
+                try:
+                    await asyncio.to_thread(self.proc.wait, timeout=5)
+                except subprocess.TimeoutExpired:
+                    self.proc.kill()
+                    await asyncio.to_thread(self.proc.wait)
+        self._clean_restore_data_dirs()

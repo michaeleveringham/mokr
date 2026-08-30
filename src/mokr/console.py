@@ -43,13 +43,7 @@ async def scrape(
         if user_agent:
             await page.set_user_agent(user_agent)
         response = await page.goto(url, timeout=timeout, wait_until=wait_until)
-        if browser_type == "chrome":
-            html = await response.content()
-        else:
-            html = (
-                "Firefox does not support accessing response body."
-                f" Response result: {response.status}: {response.reason}"
-            )
+        html = await response.content()
         print(html)
         await browser.close()
         if output_file:

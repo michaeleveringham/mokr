@@ -2,9 +2,11 @@ import os
 import sys
 from pathlib import Path
 
-MOKR_VERSION = "0.2.0"
-DEFAULT_CHROME_VERSION = "148.0.7732.0"
-DEFAULT_FIREFOX_BUILD = "150.0a1"
+MOKR_VERSION = "1.0.0"
+# Chrome for Testing's stable channel and the current mozilla-central nightly.
+# Keep these explicit so an install is repeatable for a given mokr release.
+DEFAULT_CHROME_VERSION = "152.0.7977.64"
+DEFAULT_FIREFOX_BUILD = "157.0a1"
 CHROME_VERSION = os.environ.get(
     "MOKR_CHROME_VERSION",
     DEFAULT_CHROME_VERSION,

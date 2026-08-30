@@ -1,18 +1,17 @@
 [project]
 name = "mokr"
-version = "0.2.0"
+version = "1.0.0"
 description = "Remote web browser automation."
 authors = [{name = "Michael Everingham", email = "36551116+michaeleveringham@users.noreply.github.com"}]
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 dependencies = [
-    "pyee>=11.1.0",
-    "websockets>=12.0",
-    "requests>=2.31.0",
-    "tqdm>=4.66.2",
-    "httpx[http2,socks]>=0.27.0",
-    "geckordp>=0.4.53",
-    "pytest-asyncio>=1.2.0",
+    "pyee>=13.0.1",
+    "websockets>=16.1.1",
+    "requests>=2.34.2",
+    "tqdm>=4.70.0",
+    "httpx[http2,socks]>=0.28.1",
+    "pytest-asyncio>=1.4.0",
 ]
 
 [project.scripts]
@@ -33,6 +32,14 @@ test = [
 
 [tool.black]
 line-length = 80
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-p no:cacheprovider"
+markers = [
+    "integration: requires a locally installed browser and is disabled by default",
+]
 
 [build-system]
 requires = ["hatchling"]

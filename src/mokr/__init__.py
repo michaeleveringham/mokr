@@ -2,14 +2,40 @@ import asyncio
 import logging
 from typing import Literal
 
-from mokr.browser import Browser
-from mokr.connection import Connection
+from mokr.bidi import BidiConnection, BidiSession, FirefoxBrowser
+from mokr.cdp.browser import CdpBrowser
+from mokr.cdp.connection import CdpConnection
 from mokr.constants import BROWSER_CLOSE, MOKR_VERSION, TARGET_GET_CONTEXTS
-from mokr.launch import ChromeLauncher, FirefoxLauncher
+from mokr.launch import ChromeLauncher, FirefoxLauncher, Launcher
+from mokr.protocols import (
+    Browser,
+    BrowserContext,
+    Connection,
+    Element,
+    Frame,
+    Page,
+    Request,
+    Response,
+)
 from mokr.utils import get_ws_endpoint
 
 version = MOKR_VERSION
 version_info = tuple(int(i) for i in version.split("."))
+
+__all__ = [
+    "Browser",
+    "BrowserContext",
+    "Connection",
+    "Element",
+    "Frame",
+    "Page",
+    "Request",
+    "Response",
+    "connect",
+    "launch",
+    "version",
+    "version_info",
+]
 
 
 def launch(
@@ -31,9 +57,9 @@ def launch(
     loop: asyncio.AbstractEventLoop = None,
     firefox_user_prefs: dict = None,
     firefox_addons_paths: list[str] = None,
-) -> Browser:
+) -> Launcher[Browser]:
     """
-    Launch a browser process and create a `mokr.browser.Browser`.
+    Launch a browser process and create a browser matching `Browser`.
     Wrapper for `mokr.launch.Launcher.launch`.
 
     Args:
@@ -103,7 +129,8 @@ def launch(
         ValueError: Raised if `browser_type` isn't of "chrome" or "firefox".
 
     Returns:
-        Browser: A newly created `mokr.browser.Browser` instance.
+        Launcher[Browser]: An async context manager that yields a
+        browser backed by CDP for Chrome or BiDi for Firefox.
     """
     launcher_classes = {
         "chrome": ChromeLauncher,
@@ -147,17 +174,12 @@ async def connect(
     Connect to an existing running browser.
 
     Args:
-        browser_type (Literal["chrome", "firefox"]): The type of browser to
-            connect to. One of "chrome" or "firefox". Note that Firefox is not
-            fully implemented and only offers partial functionality.
-        browser_ws_endpoint (str, optional): An existing browser websocket
-            endpoint to connect to. Should be formated like
-            `"ws://${host}:${port}/devtools/browser/<id>"`.
-            Defaults to None, if not given, must give `browser_url`.
-        browser_url (str, optional): An existing browser URL to connect to and
-            get the websocket URL from.  Should follow format of
-            "http://${host}:${port}".
-            Defaults to None, if not given, must give `browser_ws_endpoint`.
+        browser_type (Literal["chrome", "firefox"]): Chrome uses CDP; Firefox
+            uses WebDriver BiDi.
+        browser_ws_endpoint (str, optional): A CDP browser WebSocket for
+            Chrome or BiDi WebSocket for Firefox.
+        browser_url (str, optional): Chrome-only DevTools HTTP URL used to
+            discover the browser WebSocket.
         ignore_https_errors (bool, optional): Ignore site security errors.
             Defaults to False.
         default_viewport (dict[str, int], optional): Set the default viewport
@@ -177,21 +199,48 @@ async def connect(
             neither `browser_ws_endpoint` nor `browser_url` are given.
 
     Returns:
-        Browser: A newly created `mokr.browser.Browser` instance.
+        Browser: A connected browser facade.
     """
     if log_level is not None:
         logging.getLogger("mokr").setLevel(log_level)
     if browser_type not in ("chrome", "firefox"):
         raise ValueError(f"Invalid browser type given: {browser_type}")
+    event_loop = loop if loop else asyncio.get_event_loop()
+    if browser_type == "firefox":
+        if not browser_ws_endpoint:
+            raise ValueError(
+                "Firefox requires browser_ws_endpoint for BiDi attach."
+            )
+        connection = BidiConnection(
+            browser_ws_endpoint,
+            event_loop,
+            create_session=True,
+            session_capabilities={
+                "alwaysMatch": {
+                    "unhandledPromptBehavior": {"default": "ignore"}
+                }
+            },
+        )
+        await connection.start()
+        browser = FirefoxBrowser(
+            "firefox",
+            BidiSession(connection),
+            None,
+            connection.dispose,
+            default_viewport or {"width": 800, "height": 600},
+            ignore_https_errors=ignore_https_errors,
+        )
+        await browser.ready()
+        return browser
     if not browser_ws_endpoint:
         if not browser_url:
             raise ValueError(
                 "Must give one of browser_ws_endpoint or browser_url."
             )
         browser_ws_endpoint = get_ws_endpoint(browser_url)
-    connection = Connection(
+    connection = CdpConnection(
         browser_ws_endpoint,
-        loop if loop else asyncio.get_event_loop(),
+        event_loop,
         slow_mo,
     )
     browser_context_ids = (await connection.send(TARGET_GET_CONTEXTS)).get(
@@ -200,7 +249,7 @@ async def connect(
     default_viewport = (
         default_viewport if default_viewport else {"width": 800, "height": 600}
     )
-    browser = Browser(
+    browser = CdpBrowser(
         browser_type,
         connection,
         browser_context_ids,

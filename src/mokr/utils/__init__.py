@@ -1,4 +1,4 @@
-from mokr.utils.launch import get_ws_endpoint  # noqa
+from mokr.utils.launch import get_bidi_ws_endpoint, get_ws_endpoint  # noqa
 from mokr.utils.remote import (  # noqa
     add_event_listener,
     format_javascript_exception,

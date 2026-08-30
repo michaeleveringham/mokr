@@ -21,7 +21,7 @@ Here we'll launch the browser, and then hook some handlers to intercept requests
 Next we navigate to the Wikipedia page for Python.
 
 The request interception method `intercept_request` is called during as part of
-the `mokr.network.Request` object's request interception callback chain.
+the shared `mokr.Request` protocol's request interception callback chain.
 We look for the request for the Python logo, and then make a new request for a picture of a python
 snake instead.
 
@@ -29,12 +29,11 @@ Finally, we fulfill the original request with response from the snake-request.
 
 ```python
 import asyncio
-from mokr import launch
-from mokr.network import Request, Response
+from mokr import Request, Response, launch
 
 async def main():
     snake_url = "https://upload.wikimedia.org/wikipedia/commons/3/32/Python_molurus_molurus_2.jpg"
-    async with launch(headless=False) as browser:
+    async with launch("chrome", headless=False) as browser:
         page = await browser.first_page()
 
         async def intercept_request(request: Request) -> Request | None:

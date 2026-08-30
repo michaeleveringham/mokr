@@ -51,12 +51,11 @@ Python logo, make a new request for a picture of a python snake, and fulfill the
 original request with it.
 ```python
 import asyncio
-from mokr import launch
-from mokr.network import Request, Response
+from mokr import Request, Response, launch
 
 async def main():
     snake_url = "https://upload.wikimedia.org/wikipedia/commons/3/32/Python_molurus_molurus_2.jpg"
-    async with launch(headless=False) as browser:
+    async with launch("chrome", headless=False) as browser:
         page = await browser.first_page()
 
         async def intercept_request(request: Request) -> Request | None:
@@ -81,6 +80,19 @@ asyncio.run(main())
 Screenshot from running the above example.
 ![Screenshot from running the above example.](docs/images/usage-request-interception-example.png)
 
+`launch()` returns shared protocol interfaces, also exported from `mokr` for convenient annotations.
+```python
+from mokr import Browser, Page
+
+async def inspect(page: Page) -> str:
+    return await page.title()
+
+async def first_page(browser: Browser) -> Page | None:
+    return await browser.first_page()
+```
+
+However, if desired, direct objects could be imported from `mokr.cdp` or `mokr.bidi`.
+
 ## Notable Changes from Pyppeteer
 
 While forked from `pyppeteer`, there are some notable changes beyond reformating,
@@ -91,21 +103,19 @@ Changed:
   `puppeteer` heavily, but is not 1:1 with it. It uses the
   [fetch domain](https://chromedevtools.github.io/devtools-protocol/tot/Fetch/) instead
   of just the [network domain](https://chromedevtools.github.io/devtools-protocol/tot/Network/).
-  - Request interception is enabled by default. Can be disabled with 
-  `Page.set_request_interception_enabled(False)` (on Chrome, Firefox is always on).
+- Chrome request interception is enabled by default and can be disabled with
+  `Page.set_request_interception_enabled(False)`. Firefox request interception is
+  enabled when a `"request"` route is registered and disabled when all are de-registered.
   - `Browser.create` has been replaced with `Browser.ready` and accepts no keyword arguments.
   This means a `Browser` can be instantied and target discovery postponed until
   `.ready()` is called.
   - The `launch` method is top-level and offers an async context manager to better handle
   graceful exits.
-  - Firefox only: Temporary extensions can be installed at browser launch.
-  - `CDPSession` is now `DevtoolsSession` and shares a base class with `Connection`,
-  called `RemoteConnection`.
 
 New:
-  - Partial Firefox support.
-  - There is a new class, `FetchDomain` that can be used to send fetch requests
-  via `Page.fetch` (this calls the page's instantiated `FetchDomain` object).
+  - Firefox support.
+  - Pages expose a backend-specific fetch domain through `Page.fetch_domain`
+  and the convenient `Page.fetch` shortcut.
   - Another new class, `HttpDomain` is available to send ad hoc requests via an
   `httpx`, HTTP2-enabled, client that syncs it's cookies with the parent `Page` and
   vice-versa.
@@ -114,7 +124,8 @@ New:
 
 Removed:
   - Tracing has been removed.
-  - `ElementHandle.querySelectorEval` and `.querySelectorAllEval` have been removed.
+  - The legacy element-handle `querySelectorEval` and `querySelectorAllEval`
+  helpers have been removed.
 
 ## Compared to...
 
@@ -137,7 +148,6 @@ The disadvantages below are not a knock on any of these projects or their contri
           <li>Well-maintained as owned by Microsoft.</li>
           <li>Offers syncronous and asyncronous APIs.</li>
           <li>Offers a fantastic request context.</li>
-          <li>Supports Firefox fully.</li>
         </ul>
       </td>
       <td>
@@ -187,16 +197,5 @@ The disadvantages below are not a knock on any of these projects or their contri
 
 ## To Do
 
-- Finish/publish tests.
-- Fully support Firefox. Currently only a subset of CDP is implemented in Firefox, so functionality is lacking. While
-[BiDi](https://developer.chrome.com/blog/webdriver-bidi) is in development, it is not certain when it will be feature-complete.
-There are a few options here:
-  - [puppeteer is tracking](https://puppeteer.github.io/ispuppeteerwebdriverbidiready/) their own progress. Could wait for this
-  to be closer to parity and port it.
-  - Another option would be to port off the implementation Microsoft has done, since [they will not be abandoning their custom Firefox distribution for BiDi anytime soon](https://github.com/microsoft/playwright/pull/24073#issuecomment-1636205254). This would create an abtract dependency, though.
-  - A third option would be to use temporary extensions to mimic as much behaviour as possible. We could already potentially use the
-  [webRequest API](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest) to intercept, abort, and alert requests.
-  Though the `Runtime.addBinding` CDP method is not implemented in Firefox so it can be difficult to callback to Python methods
-  in a blocking manner.
 - Explore decorating `Page.wait_for_<x>` methods with `contextlib.asynccontextmanager`
 so the syntax is more straightforward.
